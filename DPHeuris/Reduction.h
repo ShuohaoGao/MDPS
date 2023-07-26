@@ -1,0 +1,526 @@
+#ifndef REDUCTION_H
+#define REDUCTION_H
+
+#include "Graph.h"
+
+class Reduction
+{
+private:
+    Map *common_out_neighbor_cnt, *common_in_neighbor_cnt;
+    vector<pii> undirected_edges; // undirected
+    Graph *g;
+    ui n, m;
+    int *d; // 无向图中的度数
+    int *st;
+    int *ed;
+    int *q;
+    int tt;
+    inline bool cmp(int a, int b)
+    {
+        return d[a] < d[b] || (d[a] == d[b] && a < b);
+    }
+    inline void process_triangle(int a, int b, int c)
+    {
+        bool ab = g->exist_edge(a, b);
+        bool ba = g->exist_edge(b, a);
+        bool ac = g->exist_edge(a, c);
+        bool ca = g->exist_edge(c, a);
+        bool bc = g->exist_edge(b, c);
+        bool cb = g->exist_edge(c, b);
+        bool ok = (ab || ba) && (ac || ca) && (bc || cb);
+        if (!ok)
+        {
+            printf("枚举出错误的三角形 %d %d %d\n", a, b, c);
+            return;
+        }
+        // a b为底边
+        if (ac && bc)
+            common_out_neighbor_cnt->increment({a, b});
+        if (ca && cb)
+            common_in_neighbor_cnt->increment({a, b});
+        // a c为底边
+        if (ab && cb)
+            common_out_neighbor_cnt->increment({a, c});
+        if (ba && bc)
+            common_in_neighbor_cnt->increment({a, c});
+        // b c为底边
+        if (ca && ba)
+            common_out_neighbor_cnt->increment({c, b});
+        if (ab && ac)
+            common_in_neighbor_cnt->increment({c, b});
+    }
+    // 以a b为底边，连续处理多个三角形(效率高点)
+    void process(int a, int b)
+    {
+        bool ab = g->exist_edge(a, b);
+        bool ba = g->exist_edge(b, a);
+        for (int i = 0; i <= tt; i++)
+        {
+            int c = q[i];
+            bool ac = g->exist_edge(a, c);
+            bool ca = g->exist_edge(c, a);
+            bool bc = g->exist_edge(b, c);
+            bool cb = g->exist_edge(c, b);
+            // a b为底边
+            if (ac && bc)
+                common_out_neighbor_cnt->increment({a, b});
+            if (ca && cb)
+                common_in_neighbor_cnt->increment({a, b});
+            // a c为底边
+            if (ab && cb)
+                common_out_neighbor_cnt->increment({a, c});
+            if (ba && bc)
+                common_in_neighbor_cnt->increment({a, c});
+            // b c为底边
+            if (ca && ba)
+                common_out_neighbor_cnt->increment({c, b});
+            if (ab && ac)
+                common_in_neighbor_cnt->increment({c, b});
+        }
+    }
+
+    void list_triangles()
+    {
+        q = new int[n];
+        for (ui i = 0; i < m; i++)
+        {
+            ui a = undirected_edges[i].x, b = undirected_edges[i].y;
+            if (a > b)
+                continue;
+            if (!cmp(a, b))
+                swap(a, b);
+            int pa = st[a], pb = st[b];
+            // 以（a,b）为底边，枚举ab两点的公共邻居v
+            // 为了避免重复枚举，规定每个三角形的顶点度数最大，底边的两个点度数小
+            tt = -1;
+            while (pa < ed[a] && pb < ed[b])
+            {
+                int v = undirected_edges[pa++].second;
+                if (cmp(v, a) || cmp(v, b))
+                    continue;
+                while (pb < ed[b] && undirected_edges[pb].y < v)
+                    pb++;
+                if (pb >= ed[b])
+                    break;
+                if (undirected_edges[pb].y > v)
+                    continue;
+                pb++;
+                // undirected_edges[pb-1].y == v
+                // process_triangle(a, b, v);
+                q[++tt] = v;
+            }
+            process(a, b);
+        }
+        delete q;
+    }
+
+    void init()
+    {
+        m = g->m;
+        n = g->n;
+        undirected_edges.resize(m * 2);
+        // 把有向边当成无向边来处理
+        pii *edges = g->initialEdges;
+        for (ui i = 0; i < m; i++)
+        {
+            ui a = edges[i].x, b = edges[i].y;
+            undirected_edges[i << 1] = {a, b};
+            undirected_edges[i << 1 | 1] = {b, a};
+        }
+        // 排序+去重
+        unique_pii(undirected_edges, n);
+        m = undirected_edges.size();
+        if (d == nullptr)
+            d = new int[n];
+        memset(d, 0, sizeof(int) * n);
+        if (st == nullptr)
+            st = new int[n];
+        memset(st, 0x3f, sizeof(int) * n);
+        if (ed == nullptr)
+            ed = new int[n];
+        memset(ed, 0, sizeof(int) * n);
+        st[0] = 0;
+        ed[0] = 0;
+        for (int i = 0; i < (int)undirected_edges.size(); i++)
+        {
+            int a = undirected_edges[i].first;
+            st[a] = min(st[a], i);
+            ed[a] = max(ed[a], i + 1);
+        }
+        st[0] = 0;
+        for (int i = 1; i < n; i++)
+        {
+            if (st[i] == 0x3f3f3f3f)
+            {
+                ed[i] = st[i] = ed[i - 1];
+            }
+            d[i] = ed[i] - st[i];
+        }
+    }
+
+public:
+    Reduction(Graph *_g)
+    {
+        g = _g;
+        n = g->n;
+        common_in_neighbor_cnt = get_suitable_map(n, g->m);
+        common_out_neighbor_cnt = get_suitable_map(n, g->m);
+        d = st = ed = nullptr;
+        init();
+    }
+    ~Reduction()
+    {
+        delete common_in_neighbor_cnt;
+        delete common_out_neighbor_cnt;
+        delete[] st;
+        delete[] ed;
+        delete[] d;
+    }
+    void strong_reduce(bool first_reduce = false)
+    {
+        double st_time = get_system_time_microsecond();
+        list_triangles();
+        printf("Time cost of listing triangles: %.4lf s\n", (get_system_time_microsecond() - st_time) / 1e6);
+        Queue *q_e = new Queue(g->m + 1); // 需要删掉的边集
+        queue<int> q_v;                   // 需要删掉的点集
+        pii *edges = g->initialEdges;
+        // csapp优化:常用变量
+        int lb_2k=lb-2*paramK;
+        int lb_2l=lb-2*paramL;
+        int lb_2k1=lb_2k+1;
+        int lb_2l1=lb_2l+1;
+        for (int i = 0; i < g->m; i++)
+        {
+            int u = edges[i].x;
+            int v = edges[i].y;
+            if (g->exist_edge(v, u))
+            {
+                if (common_out_neighbor_cnt->get({u, v}) <= lb_2k || common_in_neighbor_cnt->get({u, v}) <= lb_2l)
+                {
+                    q_e->push(g->map.get(u, v));
+                }
+            }
+            else
+            {
+                if (common_out_neighbor_cnt->get({u, v}) <= lb_2k1 || common_in_neighbor_cnt->get({u, v}) <= lb_2l1)
+                {
+                    q_e->push(g->map.get(u, v));
+                }
+            }
+        }
+        bool *v_remove = new bool[n];
+        memset(v_remove, 0, sizeof(bool) * n);
+        if (first_reduce)
+        {
+            while (q_e->size())
+            {
+                auto id = q_e->front();
+                q_e->pop();
+                g->remove_edge_forever(id);
+            }
+            g->refresh();
+            q_e->clear(g->m);
+            init();
+            common_in_neighbor_cnt->clear();
+            common_out_neighbor_cnt->clear();
+            list_triangles();
+            for (int i = 0; i < g->m; i++)
+            {
+                int u = edges[i].x;
+                int v = edges[i].y;
+                if (g->exist_edge(v, u))
+                {
+                    if (common_out_neighbor_cnt->get({u, v}) <= lb_2k || common_in_neighbor_cnt->get({u, v}) <= lb_2l)
+                    {
+                        q_e->push(g->map.get(u, v));
+                    }
+                }
+                else
+                {
+                    if (common_out_neighbor_cnt->get({u, v}) <= lb_2k1 || common_in_neighbor_cnt->get({u, v}) <= lb_2l1)
+                    {
+                        q_e->push(g->map.get(u, v));
+                    }
+                }
+            }
+            for (int i = 0; i < g->n; i++)
+                if (g->pd[i] <= lb)
+                {
+                    q_v.push(i);
+                    v_remove[i] = 1;
+                }
+        }
+        while (q_v.size() || q_e->size())
+        {
+            while (q_e->size()) // 删边
+            {
+                ui edge_id = q_e->front();
+                q_e->pop();
+                int from = edges[edge_id].x, to = edges[edge_id].y;
+                if (!g->remove_edge_forever(edge_id)) // false说明之前删过了
+                {
+                    continue;
+                }
+                if (g->pd[from] <= lb && !v_remove[from])
+                {
+                    q_v.push(from);
+                    v_remove[from] = 1;
+                }
+                if (g->pd[to] <= lb && !v_remove[to])
+                {
+                    q_v.push(to);
+                    v_remove[to] = 1;
+                }
+                // 考虑删边带来的连锁效应,通过枚举三角形中的另一个点
+                int from_cnt = g->din[from] + g->dout[from];
+                int to_cnt = g->din[to] + g->dout[to];
+                if (from_cnt <= to_cnt)
+                {
+                    // for (int w : g->neighbor_out(from))
+                    for (ui i = g->h.h[from]; i < g->orig_m; i = g->h.edges[i].ne)
+                    {
+                        int w = g->initialEdges[i].y;
+                        if (v_remove[w])
+                            continue;
+                        bool w_to = g->exist_edge(w, to);
+                        bool to_w = g->exist_edge(to, w);
+                        if (!w_to && !to_w)
+                            continue;
+                        bool from_w = true;
+                        bool w_from = g->exist_edge(w, from);
+                        int val_now = common_in_neighbor_cnt->reduce({w, to});
+                        if (w_to && to_w)
+                        {
+                            if (val_now <= lb_2l)
+                            {
+                                q_e->push(g->map.get(to, w));
+                                q_e->push(g->map.get(w, to));
+                            }
+                        }
+                        else
+                        {
+                            if (val_now <= lb_2l1)
+                            {
+                                if (w_to)
+                                {
+                                    q_e->push(g->map.get(w, to));
+                                }
+                                else
+                                {
+                                    q_e->push(g->map.get(to, w));
+                                }
+                            }
+                        }
+                        if (w_to)
+                        {
+                            int val = common_out_neighbor_cnt->reduce({from, w});
+                            if (w_from)
+                            {
+                                if (val <= lb_2k)
+                                {
+                                    q_e->push(g->map.get(from, w));
+                                    q_e->push(g->map.get(w, from));
+                                }
+                            }
+                            else
+                            {
+                                if (val <= lb_2k1)
+                                {
+                                    q_e->push(g->map.get(from, w));
+                                }
+                            }
+                        }
+                    }
+                    // for (int w : g->neighbor_in(from))
+                    for (ui i = g->reverse_h.h[from]; i < g->orig_m; i = g->reverse_h.edges[i].ne)
+                    {
+                        int w = g->initialEdges[i].x;
+                        if (v_remove[w] || !g->exist_edge(w, to))
+                            continue;
+                        if (g->exist_edge(from, w))
+                            continue; // 双向边已经被处理,现在只要单向边
+                        int val = common_out_neighbor_cnt->reduce({from, w});
+                        if (val <= lb_2k1)
+                        {
+                            q_e->push(g->map.get(w, from));
+                        }
+                    }
+                }
+                else
+                {
+                    // for (int w : g->neighbor_in(to))
+                    for (ui i = g->reverse_h.h[to]; i < g->orig_m; i = g->reverse_h.edges[i].ne)
+                    {
+                        int w = g->initialEdges[i].x;
+                        if (v_remove[w])
+                            continue;
+                        bool w_from = g->exist_edge(w, from);
+                        bool from_w = g->exist_edge(from, w);
+                        if (!w_from && !from_w)
+                            continue;
+                        bool w_to = true;
+                        bool to_w = g->exist_edge(to, w);
+                        int val_now = common_out_neighbor_cnt->reduce({w, from});
+                        if (w_from && from_w)
+                        {
+                            if (val_now <= lb_2k)
+                            {
+                                q_e->push(g->map.get(from, w));
+                                q_e->push(g->map.get(w, from));
+                            }
+                        }
+                        else
+                        {
+                            if (val_now <= lb_2k1)
+                            {
+                                if (w_from)
+                                {
+                                    q_e->push(g->map.get(w, from));
+                                }
+                                else
+                                {
+                                    q_e->push(g->map.get(from, w));
+                                }
+                            }
+                        }
+                        if (from_w)
+                        {
+                            int val = common_in_neighbor_cnt->reduce({to, w});
+                            if (to_w)
+                            {
+                                if (val <= lb_2l)
+                                {
+                                    q_e->push(g->map.get(to, w));
+                                    q_e->push(g->map.get(w, to));
+                                }
+                            }
+                            else
+                            {
+                                if (val <= lb_2l1)
+                                {
+                                    q_e->push(g->map.get(w, to));
+                                }
+                            }
+                        }
+                    }
+                    // for (int w : g->neighbor_out(to))
+                    for (ui i = g->h.h[to]; i < g->orig_m; i = g->h.edges[i].ne)
+                    {
+                        int w = g->initialEdges[i].y;
+                        if (v_remove[w] || !g->exist_edge(from, w))
+                            continue;
+                        if (g->exist_edge(w, to))
+                            continue; // 双向边已经被处理,现在只要单向边
+                        int val = common_in_neighbor_cnt->reduce({to, w});
+                        if (val <= lb_2l1)
+                        {
+                            q_e->push(g->map.get(to, w));
+                        }
+                    }
+                }
+            }
+            if (q_v.size()) // 删点
+            {
+                int u = q_v.front();
+                q_v.pop();
+                // for (int to : g->neighbor_out(u)) // 枚举出边
+                for (ui i = g->h.h[u]; i < g->orig_m; i = g->h.edges[i].ne)
+                {
+                    int to = g->initialEdges[i].y;
+                    if (g->din[to] - 1 <= lb - paramL && !v_remove[to])
+                    {
+                        q_v.push(to);
+                        v_remove[to] = 1;
+                    }
+                }
+
+                // for (int from : g->neighbor_in(u)) // 枚举入边
+                for (ui i = g->reverse_h.h[u]; i < g->orig_m; i = g->reverse_h.edges[i].ne)
+                {
+                    int from = g->initialEdges[i].x;
+                    if (g->dout[from] - 1 <= lb - paramK && !v_remove[from])
+                    {
+                        q_v.push(from);
+                        v_remove[from] = 1;
+                    }
+                }
+                for (int v : g->neighbor_out(u))
+                {
+                    if (v_remove[v])
+                        continue;
+                    for (int w : g->neighbor_out(u))
+                    {
+                        if (v_remove[w])
+                            continue;
+                        if (w == v)
+                            break;
+                        bool vw = g->exist_edge(v, w);
+                        bool wv = g->exist_edge(w, v);
+                        if (vw || wv)
+                        {
+                            int val = common_in_neighbor_cnt->reduce({v, w});
+                            if (wv && vw)
+                            {
+                                if (val <= lb_2l)
+                                {
+                                    q_e->push(g->map.get(w, v));
+                                    q_e->push(g->map.get(v, w));
+                                }
+                            }
+                            else if (wv)
+                            {
+                                if (val <= lb_2l1)
+                                    q_e->push(g->map.get(w, v));
+                            }
+                            else
+                            {
+                                if (val <= lb_2l1)
+                                    q_e->push(g->map.get(v, w));
+                            }
+                        }
+                    }
+                }
+                for (int v : g->neighbor_in(u))
+                {
+                    if (v_remove[v])
+                        continue;
+                    for (int w : g->neighbor_in(u))
+                    {
+                        if (v_remove[w])
+                            continue;
+                        if (w == v)
+                            break;
+                        bool vw = g->exist_edge(v, w);
+                        bool wv = g->exist_edge(w, v);
+                        if (vw || wv)
+                        {
+                            int val = common_out_neighbor_cnt->reduce({v, w});
+                            if (wv && vw)
+                            {
+                                if (val <= lb_2k)
+                                {
+                                    q_e->push(g->map.get(w, v));
+                                    q_e->push(g->map.get(v, w));
+                                }
+                            }
+                            else if (wv)
+                            {
+                                if (val <= lb_2k1)
+                                    q_e->push(g->map.get(w, v));
+                            }
+                            else
+                            {
+                                if (val <= lb_2k1)
+                                    q_e->push(g->map.get(v, w));
+                            }
+                        }
+                    }
+                }
+                g->remove_vertex_forever(u);
+            }
+        }
+        delete q_e;
+    }
+};
+
+#endif
