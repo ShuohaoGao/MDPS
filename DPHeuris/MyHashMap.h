@@ -4,7 +4,6 @@
 #include"Utility.h"
 
 // used for second order reduction to save edges
-// 拉链法哈希表
 struct MyHashMap
 {
     struct edge
@@ -118,10 +117,10 @@ struct MyHashMap
     }
 };
 
-class Map//由于map<pii,int> 太慢，所以使用另外的数据结构，并且认为{u,v}={v,u}
+class Map//map<pii,int> is too slow;regard {u,v}={v,u}
 {
 protected:
-	ll maxv;//要求pii的first<maxv 
+	ll maxv;//make sure that pii.first<maxv 
 public:
     Map(){}
 	Map(ll v)
@@ -232,7 +231,7 @@ public:
 
 class HashMap_K:public Map 
 {
-    struct HMap//开放寻址法哈希表
+    struct HMap
     {
         ll m;
         struct node
@@ -321,7 +320,7 @@ class HashMap_K:public Map
                 a[i].valid=0;
         }
     }h;
-    // struct HMap_List //拉链法哈希表
+    // struct HMap_List 
     // {
     //     ll m;
     //     ui idx;
@@ -448,7 +447,7 @@ public:
 	}
 };
 
-//当v值较小时，可以用空间换时间来避免哈希冲突
+//when v is small, we can avoid hash collision by allocing more memory
 inline  Map* get_suitable_map(ll v,ll m=1e7)
 {
     static const int MAXV=20000;
@@ -457,7 +456,7 @@ inline  Map* get_suitable_map(ll v,ll m=1e7)
     return new HashMapSTL(v);
 }
 
-//可以避免重复入队
+//avoid push into queue repeatedly
 class Queue
 {
     bool *in_queue;

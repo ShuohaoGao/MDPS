@@ -4,16 +4,15 @@
 #include "MyHashMap.h"
 #include "LinearHeap.h"
 
-// 邻接表
 struct AdjacentList
 {
-    struct edge // 可以是正向边，也可以是反向边
+    struct edge // can be reverse edges
     {
         ui a, b;
         ui pre, ne;
     };
     edge *edges;
-    ui m; // 容量而非边数，所以不会减小
+    ui m; // capacity instead of edge_cnt
     ll n;
     ui *h;
     void init(ui _m, ui _n)
@@ -70,12 +69,12 @@ public:
     ui n, m;
     ui orig_n, orig_m;
     ui *din, *dout, *pd;       // pseudo-degree
-    AdjacentList h, reverse_h; // 正向边与反向边
+    AdjacentList h, reverse_h; 
     MyHashMap map;             // serve for func: exist_edge(a,b)
-    ui *vis;                   // li san hua
+    ui *vis;                   // discretization
     pii *initialEdges;
     bool *v_remove;
-    int *q; // 用于弱缩减
+    int *q; // used for weak reduce
     Graph()
     {
         vis = din = dout = pd = nullptr;
@@ -168,7 +167,7 @@ public:
         fclose(out);
         exit(0);
     }
-    void refresh() // 重新建图
+    void refresh() // rebuild graph
     {
         if (!m)
         {
@@ -302,7 +301,7 @@ public:
             weak_reduce();
             if (!n)
                 break;
-        } while (1); // 每一轮迭代，都是线性的
+        } while (1); // each round T(n)=O(n)
         if (n)       // next, prepare for strong reduce
         {
             map.init(m, n);
@@ -386,7 +385,7 @@ public:
         }
         for (ui i = 0; i < m; i++)
             initialEdges[i] = {vis[initialEdges[i].x], vis[initialEdges[i].y]};
-        // 重新建图
+        // rebuild graph
         h.clear(m, n);
         reverse_h.clear(m, n);
         initAdjacentList(initialEdges);

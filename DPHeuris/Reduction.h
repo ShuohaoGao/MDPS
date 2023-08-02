@@ -10,7 +10,7 @@ private:
     vector<pii> undirected_edges; // undirected
     Graph *g;
     ui n, m;
-    int *d; // 无向图中的度数
+    int *d; // degree in undirect graph
     int *st;
     int *ed;
     int *q;
@@ -30,26 +30,26 @@ private:
         bool ok = (ab || ba) && (ac || ca) && (bc || cb);
         if (!ok)
         {
-            printf("枚举出错误的三角形 %d %d %d\n", a, b, c);
+            printf("wrong triangle %d %d %d\n", a, b, c);
             return;
         }
-        // a b为底边
+        // a b is bottom edge
         if (ac && bc)
             common_out_neighbor_cnt->increment({a, b});
         if (ca && cb)
             common_in_neighbor_cnt->increment({a, b});
-        // a c为底边
+        // a c is bottom edge
         if (ab && cb)
             common_out_neighbor_cnt->increment({a, c});
         if (ba && bc)
             common_in_neighbor_cnt->increment({a, c});
-        // b c为底边
+        // b c is bottom edge
         if (ca && ba)
             common_out_neighbor_cnt->increment({c, b});
         if (ab && ac)
             common_in_neighbor_cnt->increment({c, b});
     }
-    // 以a b为底边，连续处理多个三角形(效率高点)
+    // a b is bottom edge，deal with more than one triangles each invoking( more efficient )
     void process(int a, int b)
     {
         bool ab = g->exist_edge(a, b);
@@ -61,17 +61,17 @@ private:
             bool ca = g->exist_edge(c, a);
             bool bc = g->exist_edge(b, c);
             bool cb = g->exist_edge(c, b);
-            // a b为底边
+            // a b is bottom edge
             if (ac && bc)
                 common_out_neighbor_cnt->increment({a, b});
             if (ca && cb)
                 common_in_neighbor_cnt->increment({a, b});
-            // a c为底边
+            // a c is bottom edge
             if (ab && cb)
                 common_out_neighbor_cnt->increment({a, c});
             if (ba && bc)
                 common_in_neighbor_cnt->increment({a, c});
-            // b c为底边
+            // b c is bottom edge
             if (ca && ba)
                 common_out_neighbor_cnt->increment({c, b});
             if (ab && ac)
@@ -90,8 +90,7 @@ private:
             if (!cmp(a, b))
                 swap(a, b);
             int pa = st[a], pb = st[b];
-            // 以（a,b）为底边，枚举ab两点的公共邻居v
-            // 为了避免重复枚举，规定每个三角形的顶点度数最大，底边的两个点度数小
+            // a,b is bottom edge, list common neighbor v of a,b
             tt = -1;
             while (pa < ed[a] && pb < ed[b])
             {
@@ -119,7 +118,7 @@ private:
         m = g->m;
         n = g->n;
         undirected_edges.resize(m * 2);
-        // 把有向边当成无向边来处理
+        //treat directed edges as undirected edges
         pii *edges = g->initialEdges;
         for (ui i = 0; i < m; i++)
         {
@@ -127,7 +126,7 @@ private:
             undirected_edges[i << 1] = {a, b};
             undirected_edges[i << 1 | 1] = {b, a};
         }
-        // 排序+去重
+        // sort and unique
         unique_pii(undirected_edges, n);
         m = undirected_edges.size();
         if (d == nullptr)
@@ -181,10 +180,10 @@ public:
         double st_time = get_system_time_microsecond();
         list_triangles();
         printf("Time cost of listing triangles: %.4lf s\n", (get_system_time_microsecond() - st_time) / 1e6);
-        Queue *q_e = new Queue(g->m + 1); // 需要删掉的边集
-        queue<int> q_v;                   // 需要删掉的点集
+        Queue *q_e = new Queue(g->m + 1); // queue of edges to be removed
+        queue<int> q_v;                   // queue of vertices to be removed
         pii *edges = g->initialEdges;
-        // csapp优化:常用变量
+        // csapp improvement
         int lb_2k=lb-2*paramK;
         int lb_2l=lb-2*paramL;
         int lb_2k1=lb_2k+1;
@@ -252,12 +251,12 @@ public:
         }
         while (q_v.size() || q_e->size())
         {
-            while (q_e->size()) // 删边
+            while (q_e->size()) 
             {
                 ui edge_id = q_e->front();
                 q_e->pop();
                 int from = edges[edge_id].x, to = edges[edge_id].y;
-                if (!g->remove_edge_forever(edge_id)) // false说明之前删过了
+                if (!g->remove_edge_forever(edge_id)) 
                 {
                     continue;
                 }
@@ -271,7 +270,6 @@ public:
                     q_v.push(to);
                     v_remove[to] = 1;
                 }
-                // 考虑删边带来的连锁效应,通过枚举三角形中的另一个点
                 int from_cnt = g->din[from] + g->dout[from];
                 int to_cnt = g->din[to] + g->dout[to];
                 if (from_cnt <= to_cnt)
@@ -338,7 +336,7 @@ public:
                         if (v_remove[w] || !g->exist_edge(w, to))
                             continue;
                         if (g->exist_edge(from, w))
-                            continue; // 双向边已经被处理,现在只要单向边
+                            continue; // we only need Unidirectional edge
                         int val = common_out_neighbor_cnt->reduce({from, w});
                         if (val <= lb_2k1)
                         {
@@ -410,7 +408,7 @@ public:
                         if (v_remove[w] || !g->exist_edge(from, w))
                             continue;
                         if (g->exist_edge(w, to))
-                            continue; // 双向边已经被处理,现在只要单向边
+                            continue; // Unidirectional edge
                         int val = common_in_neighbor_cnt->reduce({to, w});
                         if (val <= lb_2l1)
                         {
@@ -419,11 +417,11 @@ public:
                     }
                 }
             }
-            if (q_v.size()) // 删点
+            if (q_v.size()) 
             {
                 int u = q_v.front();
                 q_v.pop();
-                // for (int to : g->neighbor_out(u)) // 枚举出边
+                // for (int to : g->neighbor_out(u)) 
                 for (ui i = g->h.h[u]; i < g->orig_m; i = g->h.edges[i].ne)
                 {
                     int to = g->initialEdges[i].y;
@@ -434,7 +432,7 @@ public:
                     }
                 }
 
-                // for (int from : g->neighbor_in(u)) // 枚举入边
+                // for (int from : g->neighbor_in(u))
                 for (ui i = g->reverse_h.h[u]; i < g->orig_m; i = g->reverse_h.edges[i].ne)
                 {
                     int from = g->initialEdges[i].x;

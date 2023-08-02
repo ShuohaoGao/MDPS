@@ -7,7 +7,7 @@ struct point
 {
     int id;
     int pd;  // pseudo-degree
-    int cnt; // 邻居个数
+    int cnt; // neighbor count
     bool operator<(const point &P) const
     {
         return cnt > P.cnt || (cnt == P.cnt && pd > P.pd);
@@ -20,13 +20,12 @@ class Heuristic_add
 private:
     ui n;
     ui m;
-    ll *h, *ht; // 邻接表,正向边与反向边
+    ll *h, *ht; // adjacent list and reverse ~
     ll *ne;
     ui *e;
     ui idx;
     int *din, *dout;
-    // bool *removed; // 标记点是否被删除
-    int *cnt; // 扩张时用到
+    int *cnt; // used for extend
     inline void add_edge(int a, int b)
     {
         e[idx] = b, ne[idx] = h[a], h[a] = idx++;
@@ -37,8 +36,6 @@ private:
 
     int add_first()
     {
-        // 初始化邻接表
-        // memset(removed, 0, n * sizeof(bool));
         memset(din, 0, n * sizeof(int));
         memset(dout, 0, n * sizeof(int));
 
@@ -69,12 +66,10 @@ private:
                 ret = tt;
                 if (ret > lb)
                 {
-                    cout << "枚举扩张后" << ret << " 枚举点数 " << i + 1 << endl;
                     return ret;
                 }
             }
         }
-        // cout << "枚举扩张后" << ret << endl;
         return ret;
     }
 
@@ -163,7 +158,7 @@ private:
         for (int u : s)
             p[u].cnt = -INF;
         tr.build(1, 0, n - 1);
-        // 现在，din dout存的是plex中的度数
+        // now, din dout store degree of plex
         memset(din, 0, n * sizeof(int));
         memset(dout, 0, n * sizeof(int));
         for (int u : s)
@@ -179,11 +174,11 @@ private:
         }
         while (true)
         {
-            int u = tr.tr[1].p.id; // 最适合加入S的点
+            int u = tr.tr[1].p.id; // the best vertex
             if (tr.tr[1].p.cnt < 0)
                 break;
-            tr.remove(1, u); // 确保以后不会再拿出u点
-            // 尝试插入S，判断是否还是plex
+            tr.remove(1, u); // make sure u is removed
+            // try to insert u into S
             for (int i = h[u]; ~i; i = ne[i])
             {
                 int j = e[i];
@@ -197,7 +192,7 @@ private:
                     din[u]++, dout[j]++;
             }
             int lb = s.size() + 1;
-            // 检查度数
+            // check whether is a plex
             bool ok = true;
             for (int v : s)
                 if (din[v] < lb - paramL || dout[v] < lb - paramK)
@@ -205,7 +200,7 @@ private:
                     ok = false;
                     break;
                 }
-            if (!ok || din[u] < lb - paramL || dout[u] < lb - paramK) // 不能插入，回滚
+            if (!ok || din[u] < lb - paramL || dout[u] < lb - paramK) // not a plex, rollback
             {
                 for (int i = h[u]; ~i; i = ne[i])
                 {
@@ -252,10 +247,10 @@ private:
             p[i] = {min(din[i] + paramL, dout[i] + paramK), i};
         sort(p, p + n);
         reverse(p, p + n);
-        // 初始化度数
+        // init
         memset(din, 0, n * sizeof(int));
         memset(dout, 0, n * sizeof(int));
-        bool *vis = new bool[n]; // 发挥另一种作用
+        bool *vis = new bool[n];
         memset(vis, 0, n * sizeof(bool));
         for (int v : s)
             vis[v] = 1;
@@ -268,7 +263,7 @@ private:
                     din[j]++, dout[u]++;
             }
         }
-        for (int x = 0; x < n; x++) // 枚举点，加入
+        for (int x = 0; x < n; x++) // descending order sorted by pd
         {
             int u = p[x].second;
             if (vis[u])
@@ -335,18 +330,16 @@ public:
         h = ht = ne = nullptr;
         cnt = din = dout = nullptr;
         e = nullptr;
-        // removed = nullptr;
         p = nullptr;
     }
     ~Heuristic_add()
     {
     }
-    // 启发式搜索,返回一个KLplex的下界解
     int get_lower_bound(ui _n, ui _m, pii *edges, int paramK, int paramL)
     {
         n = _n;
-        m = _m << 1; // 多建立了反向边
-        idx = 0;     // 边的编号
+        m = _m << 1; // because we store reverse edges
+        idx = 0;     // index of edge
         if (h == nullptr)
             h = new ll[n];
         if (ht == nullptr)
@@ -359,13 +352,10 @@ public:
             e = new ui[m];
         if (ne == nullptr)
             ne = new ll[m];
-        // if(removed==nullptr)
-        //     removed = new bool[n];
 
-        // 初始化邻接表
+        // init adjacentList
         memset(h, -1, n * sizeof(ll));
         memset(ht, -1, n * sizeof(ll));
-        // memset(removed, 0, n * sizeof(bool));
         memset(din, 0, n * sizeof(int));
         memset(dout, 0, n * sizeof(int));
         idx = 0;
@@ -373,7 +363,7 @@ public:
         {
             add_edge(edges[i].x, edges[i].y);
         }
-        // 初始化线段树
+        // init segment tree
         if (p == nullptr)
             p = new point[n];
         for (int i = 0; i < n; i++)
