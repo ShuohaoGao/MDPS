@@ -1,12 +1,15 @@
 ## Code for directed $(k,\ell)$-plex.
 
-Written by Shuohao Gao in HITSZ.
+Written by *Shuohao Gao* in **HITSZ**.
 
 
 # Graph data format:
-first line: n m
-next m lines: a b
-Note that vertices are 0~n-1
+first line: 
+```n m```
+
+next $m$ lines: ```a b```
+
+Note that  $0 \leq a,b \leq n-1$ & self-loops and multi-edges are removed.
 
 # Usage
 ### DPHeuris
