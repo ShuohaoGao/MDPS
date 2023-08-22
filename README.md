@@ -12,7 +12,7 @@ next $m$ lines are edges: ```a b```
 Note that  $0 \leq a,b \leq n-1$ & self-loops and multi-edges are removed.
 
 # Usage
-**MDPS** has two stages: *heuristic state (preprocessing state)* and *exact search stage*.
+**MDPS** has two stages: *heuristic stage (preprocessing stage)* and *exact search stage*.
 
 If you just need a relative large instead of strictly maximum directed $(k,\ell)$-plex, then **DPHeuris** is suitable due to its high accuracy and little time cost.
 
