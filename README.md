@@ -57,5 +57,5 @@ next $n$ lines are $v_i$, i.e., a vertex in the reduced graph whose id is $j$ is
 #### More details of usage example are shown in ```DPHeuris/pre.sh``` and ```DPBB/run.sh```, the running results are shown in ```DPHeuris/log/pre_log.txt``` and ```DPBB/log/run_log.txt```
 
 We offer two kinds of executable programs:\
-```/DPHeuris/MDP-pre.exe``` and ```/DPBB/MDP-bb.exe``` can be executed in Win11 and Win10\
-```/DPHeuris/MDP-pre``` and ```/DPBB/MDP-bb``` can be executed in Ubuntu 20.04
+```DPHeuris/MDP-pre.exe``` and ```DPBB/MDP-bb.exe``` can be executed in Win11 and Win10\
+```DPHeuris/MDP-pre``` and ```DPBB/MDP-bb``` can be executed in Ubuntu 20.04
