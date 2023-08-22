@@ -1,0 +1,191 @@
+2023/08/22 Tuesday 16:49:17 CST
+============== email-Eu-core ================
+File: email-Eu-core k= 2 l= 2
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0008 s
+Acquire order: 0.0005 s
+LB by degeneracy order: 15 , n= 425 , m= 17545 , use time: 0.0031 s
+Time cost of listing triangles: 0.0078 s
+cur_lb= 15 , after strong reduce: n= 82 , m= 2661 , use time: 0.0241 s
+Time cost of listing triangles: 0.0007 s
+cur_lb= 16 , after strong reduce: n= 67 , m= 1970
+add vertex use time: 0.0112 s
+****Heuristic result****
+first_lb= 15 , first_time= 0.027207 s
+lb= 16 , tot_time= 0.038386 s, iteration= 3 , n= 67 , m= 1970
+heuristic solution:
+2, 3, 4, 6, 57, 58, 59, 63, 137, 252, 281, 305, 408, 412, 520, 685
+
+
+File: email-Eu-core k= 2 l= 3
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0006 s
+Acquire order: 0.0004 s
+LB by degeneracy order: 15 , n= 435 , m= 17834 , use time: 0.0024 s
+Time cost of listing triangles: 0.0078 s
+cur_lb= 15 , after strong reduce: n= 93 , m= 3127 , use time: 0.0242 s
+Time cost of listing triangles: 0.0009 s
+cur_lb= 16 , after strong reduce: n= 75 , m= 2387
+add vertex use time: 0.0150 s
+****Heuristic result****
+first_lb= 15 , first_time= 0.026574 s
+lb= 16 , tot_time= 0.041542 s, iteration= 3 , n= 75 , m= 2387
+heuristic solution:
+2, 54, 55, 57, 58, 63, 211, 271, 285, 305, 411, 412, 481, 698, 738, 809
+
+
+File: email-Eu-core k= 3 l= 2
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0007 s
+Acquire order: 0.0005 s
+LB by degeneracy order: 15 , n= 449 , m= 18288 , use time: 0.0028 s
+Time cost of listing triangles: 0.0082 s
+cur_lb= 15 , after strong reduce: n= 103 , m= 3604 , use time: 0.0258 s
+Time cost of listing triangles: 0.0012 s
+cur_lb= 16 , after strong reduce: n= 83 , m= 2661
+add vertex use time: 0.0182 s
+****Heuristic result****
+first_lb= 15 , first_time= 0.028678 s
+lb= 16 , tot_time= 0.046905 s, iteration= 3 , n= 83 , m= 2661
+heuristic solution:
+2, 3, 4, 6, 56, 57, 58, 59, 63, 137, 194, 252, 412, 520, 685, 859
+
+
+File: email-Eu-core k= 3 l= 3
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0012 s
+Acquire order: 0.0004 s
+LB by degeneracy order: 16 , n= 425 , m= 17545 , use time: 0.0034 s
+Time cost of listing triangles: 0.0077 s
+cur_lb= 16 , after strong reduce: n= 101 , m= 3538 , use time: 0.0240 s
+Time cost of listing triangles: 0.0011 s
+cur_lb= 17 , after strong reduce: n= 82 , m= 2661
+Time cost of listing triangles: 0.0007 s
+cur_lb= 18 , after strong reduce: n= 67 , m= 1970
+add vertex use time: 0.0160 s
+****Heuristic result****
+first_lb= 16 , first_time= 0.027391 s
+lb= 18 , tot_time= 0.043425 s, iteration= 4 , n= 67 , m= 1970
+heuristic solution:
+2, 3, 4, 6, 57, 58, 59, 63, 137, 252, 281, 286, 305, 408, 412, 520, 685, 859
+
+
+File: email-Eu-core k= 3 l= 4
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0012 s
+Acquire order: 0.0004 s
+LB by degeneracy order: 18 , n= 374 , m= 15837 , use time: 0.0032 s
+Time cost of listing triangles: 0.0076 s
+cur_lb= 18 , after strong reduce: n= 75 , m= 2387 , use time: 0.0213 s
+Time cost of listing triangles: 0.0008 s
+cur_lb= 19 , after strong reduce: n= 58 , m= 1459
+add vertex use time: 0.0139 s
+****Heuristic result****
+first_lb= 18 , first_time= 0.024510 s
+lb= 19 , tot_time= 0.038444 s, iteration= 3 , n= 58 , m= 1459
+heuristic solution:
+21, 62, 63, 81, 107, 114, 121, 128, 129, 169, 183, 210, 211, 249, 283, 303, 371, 405, 434
+
+
+File: email-Eu-core k= 4 l= 3
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0011 s
+Acquire order: 0.0005 s
+LB by degeneracy order: 18 , n= 389 , m= 16370 , use time: 0.0035 s
+Time cost of listing triangles: 0.0079 s
+cur_lb= 18 , after strong reduce: n= 83 , m= 2661 , use time: 0.0222 s
+Time cost of listing triangles: 0.0010 s
+cur_lb= 19 , after strong reduce: n= 46 , m= 1449
+add vertex use time: 0.0091 s
+****Heuristic result****
+first_lb= 18 , first_time= 0.025682 s
+lb= 19 , tot_time= 0.034739 s, iteration= 3 , n= 46 , m= 1449
+heuristic solution:
+2, 4, 6, 54, 56, 57, 58, 59, 63, 137, 138, 211, 252, 285, 286, 305, 408, 412, 520
+
+
+File: email-Eu-core k= 4 l= 4
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0006 s
+Acquire order: 0.0004 s
+LB by degeneracy order: 18 , n= 402 , m= 16775 , use time: 0.0023 s
+Time cost of listing triangles: 0.0073 s
+cur_lb= 18 , after strong reduce: n= 100 , m= 3509 , use time: 0.0231 s
+Time cost of listing triangles: 0.0011 s
+cur_lb= 19 , after strong reduce: n= 82 , m= 2661
+Time cost of listing triangles: 0.0007 s
+cur_lb= 20 , after strong reduce: n= 66 , m= 1937
+add vertex use time: 0.0165 s
+****Heuristic result****
+first_lb= 18 , first_time= 0.025398 s
+lb= 20 , tot_time= 0.041896 s, iteration= 4 , n= 66 , m= 1937
+heuristic solution:
+2, 3, 4, 6, 56, 57, 58, 59, 63, 137, 211, 252, 281, 286, 305, 408, 412, 520, 685, 859
+
+
+File: email-Eu-core k= 4 l= 5
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0006 s
+Acquire order: 0.0003 s
+LB by degeneracy order: 20 , n= 337 , m= 14581 , use time: 0.0022 s
+Time cost of listing triangles: 0.0069 s
+cur_lb= 20 , after strong reduce: n= 75 , m= 2387 , use time: 0.0199 s
+Time cost of listing triangles: 0.0006 s
+cur_lb= 21 , after strong reduce: n= 58 , m= 1459
+add vertex use time: 0.0103 s
+****Heuristic result****
+first_lb= 20 , first_time= 0.022140 s
+lb= 21 , tot_time= 0.032399 s, iteration= 3 , n= 58 , m= 1459
+heuristic solution:
+21, 28, 62, 63, 81, 106, 107, 114, 128, 129, 160, 169, 183, 212, 249, 283, 303, 329, 371, 405, 434
+
+
+File: email-Eu-core k= 5 l= 4
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0012 s
+Acquire order: 0.0004 s
+LB by degeneracy order: 19 , n= 389 , m= 16370 , use time: 0.0031 s
+Time cost of listing triangles: 0.0079 s
+cur_lb= 19 , after strong reduce: n= 101 , m= 3536 , use time: 0.0228 s
+Time cost of listing triangles: 0.0015 s
+cur_lb= 20 , after strong reduce: n= 82 , m= 2629
+Time cost of listing triangles: 0.0010 s
+cur_lb= 21 , after strong reduce: n= 46 , m= 1449
+add vertex use time: 0.0169 s
+****Heuristic result****
+first_lb= 19 , first_time= 0.025912 s
+lb= 21 , tot_time= 0.042804 s, iteration= 4 , n= 46 , m= 1449
+heuristic solution:
+21, 46, 62, 63, 81, 106, 114, 121, 128, 129, 169, 183, 210, 211, 249, 283, 303, 329, 371, 405, 434
+
+
+File: email-Eu-core k= 5 l= 5
+Read ok: n= 1005  m= 24929 
+graph init finished
+Acquire order: 0.0012 s
+Acquire order: 0.0003 s
+LB by degeneracy order: 21 , n= 333 , m= 14430 , use time: 0.0031 s
+Time cost of listing triangles: 0.0067 s
+cur_lb= 21 , after strong reduce: n= 82 , m= 2661 , use time: 0.0196 s
+Time cost of listing triangles: 0.0007 s
+cur_lb= 22 , after strong reduce: n= 66 , m= 1937
+add vertex use time: 0.0120 s
+****Heuristic result****
+first_lb= 21 , first_time= 0.022698 s
+lb= 22 , tot_time= 0.034662 s, iteration= 3 , n= 66 , m= 1937
+heuristic solution:
+2, 4, 6, 54, 56, 57, 58, 59, 63, 137, 138, 211, 252, 281, 285, 286, 305, 408, 412, 481, 520, 685
+
+
+2023/08/22 Tuesday 16:49:17 CST
+ok
+

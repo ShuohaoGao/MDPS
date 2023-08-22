@@ -1,0 +1,177 @@
+2023/08/22 Tuesday 16:51:59 CST
+============== email-Eu-core ================
+File: email-Eu-core_K=2_L=2 k= 2 l= 2
+Read ok: n= 67  m= 1970 
+reduced graph: n=67 lb= 16
+dfs_cnt= 352, branc1_cnt= 159, branch2_cnt= 142
+bounding time: 0.0008 s, reducing time: 0.0006 s, binary time: 0.0005 s
+remove time: 0.0001 s, rollback time: 0.0001 s
+sel time: 0.0000 s
+plex time: 0.0000 s
+strong reduce time: 0.0003 s
+rm v cnt: 27, rollback v cnt: 27, S add v cnt: 210
+Plex: add time: 0.0000 s, remove time: 0.0000 s
+average S size: 1.63
+induce time: 0.0036 s
+The heuristic solution is the best solution!
+ground truth= 16
+use time : 0.0091 s
+
+File: email-Eu-core_K=2_L=3 k= 2 l= 3
+Read ok: n= 75  m= 2387 
+reduced graph: n=75 lb= 16
+dfs_cnt= 270, branc1_cnt= 144, branch2_cnt= 82
+bounding time: 0.0004 s, reducing time: 0.0007 s, binary time: 0.0002 s
+remove time: 0.0002 s, rollback time: 0.0001 s
+sel time: 0.0000 s
+plex time: 0.0000 s
+strong reduce time: 0.0020 s
+rm v cnt: 146, rollback v cnt: 146, S add v cnt: 154
+Plex: add time: 0.0000 s, remove time: 0.0000 s
+average S size: 2.88
+induce time: 0.0029 s
+The best solution ( size= 17 ):
+2, 4, 6, 54, 57, 58, 63, 211, 252, 271, 281, 285, 305, 411, 412, 481, 738
+ground truth= 17
+use time : 0.0155 s
+
+File: email-Eu-core_K=3_L=2 k= 3 l= 2
+Read ok: n= 83  m= 2661 
+reduced graph: n=83 lb= 16
+dfs_cnt= 909, branc1_cnt= 475, branch2_cnt= 374
+bounding time: 0.0018 s, reducing time: 0.0013 s, binary time: 0.0009 s
+remove time: 0.0006 s, rollback time: 0.0002 s
+sel time: 0.0001 s
+plex time: 0.0001 s
+strong reduce time: 0.0012 s
+rm v cnt: 378, rollback v cnt: 378, S add v cnt: 502
+Plex: add time: 0.0000 s, remove time: 0.0000 s
+average S size: 2.77
+induce time: 0.0052 s
+The best solution ( size= 17 ):
+2, 4, 6, 54, 56, 57, 58, 59, 63, 137, 138, 252, 305, 408, 412, 520, 685
+ground truth= 17
+use time : 0.0202 s
+
+File: email-Eu-core_K=3_L=3 k= 3 l= 3
+Read ok: n= 67  m= 1970 
+reduced graph: n=67 lb= 18
+dfs_cnt= 458, branc1_cnt= 210, branch2_cnt= 199
+bounding time: 0.0011 s, reducing time: 0.0009 s, binary time: 0.0006 s
+remove time: 0.0003 s, rollback time: 0.0001 s
+sel time: 0.0000 s
+plex time: 0.0001 s
+strong reduce time: 0.0003 s
+rm v cnt: 208, rollback v cnt: 208, S add v cnt: 259
+Plex: add time: 0.0000 s, remove time: 0.0000 s
+average S size: 2.16
+induce time: 0.0035 s
+The heuristic solution is the best solution!
+ground truth= 18
+use time : 0.0097 s
+
+File: email-Eu-core_K=3_L=4 k= 3 l= 4
+Read ok: n= 58  m= 1459 
+reduced graph: n=58 lb= 19
+dfs_cnt= 170, branc1_cnt= 71, branch2_cnt= 60
+bounding time: 0.0005 s, reducing time: 0.0008 s, binary time: 0.0002 s
+remove time: 0.0002 s, rollback time: 0.0001 s
+sel time: 0.0000 s
+plex time: 0.0000 s
+strong reduce time: 0.0006 s
+rm v cnt: 85, rollback v cnt: 85, S add v cnt: 110
+Plex: add time: 0.0000 s, remove time: 0.0000 s
+average S size: 2.21
+induce time: 0.0026 s
+The heuristic solution is the best solution!
+ground truth= 19
+use time : 0.0107 s
+
+File: email-Eu-core_K=4_L=3 k= 4 l= 3
+Read ok: n= 46  m= 1449 
+reduced graph: n=46 lb= 19
+dfs_cnt= 410, branc1_cnt= 200, branch2_cnt= 183
+bounding time: 0.0011 s, reducing time: 0.0005 s, binary time: 0.0007 s
+remove time: 0.0002 s, rollback time: 0.0001 s
+sel time: 0.0001 s
+plex time: 0.0000 s
+strong reduce time: 0.0002 s
+rm v cnt: 67, rollback v cnt: 67, S add v cnt: 227
+Plex: add time: 0.0000 s, remove time: 0.0000 s
+average S size: 2.47
+induce time: 0.0017 s
+The heuristic solution is the best solution!
+ground truth= 19
+use time : 0.0067 s
+
+File: email-Eu-core_K=4_L=4 k= 4 l= 4
+Read ok: n= 66  m= 1937 
+reduced graph: n=66 lb= 20
+dfs_cnt= 866, branc1_cnt= 448, branch2_cnt= 372
+bounding time: 0.0022 s, reducing time: 0.0017 s, binary time: 0.0011 s
+remove time: 0.0007 s, rollback time: 0.0002 s
+sel time: 0.0001 s
+plex time: 0.0001 s
+strong reduce time: 0.0006 s
+rm v cnt: 512, rollback v cnt: 512, S add v cnt: 494
+Plex: add time: 0.0000 s, remove time: 0.0000 s
+average S size: 3.36
+induce time: 0.0051 s
+The heuristic solution is the best solution!
+ground truth= 20
+use time : 0.0165 s
+
+File: email-Eu-core_K=4_L=5 k= 4 l= 5
+Read ok: n= 58  m= 1459 
+reduced graph: n=58 lb= 21
+dfs_cnt= 109, branc1_cnt= 37, branch2_cnt= 35
+bounding time: 0.0002 s, reducing time: 0.0007 s, binary time: 0.0001 s
+remove time: 0.0001 s, rollback time: 0.0001 s
+sel time: 0.0000 s
+plex time: 0.0000 s
+strong reduce time: 0.0002 s
+rm v cnt: 233, rollback v cnt: 233, S add v cnt: 74
+Plex: add time: 0.0000 s, remove time: 0.0000 s
+average S size: 1.83
+induce time: 0.0020 s
+The heuristic solution is the best solution!
+ground truth= 21
+use time : 0.0054 s
+
+File: email-Eu-core_K=5_L=4 k= 5 l= 4
+Read ok: n= 46  m= 1449 
+reduced graph: n=46 lb= 21
+dfs_cnt= 458, branc1_cnt= 236, branch2_cnt= 197
+bounding time: 0.0019 s, reducing time: 0.0011 s, binary time: 0.0011 s
+remove time: 0.0005 s, rollback time: 0.0002 s
+sel time: 0.0001 s
+plex time: 0.0001 s
+strong reduce time: 0.0004 s
+rm v cnt: 252, rollback v cnt: 252, S add v cnt: 261
+Plex: add time: 0.0000 s, remove time: 0.0000 s
+average S size: 3.23
+induce time: 0.0022 s
+The heuristic solution is the best solution!
+ground truth= 21
+use time : 0.0105 s
+
+File: email-Eu-core_K=5_L=5 k= 5 l= 5
+Read ok: n= 66  m= 1937 
+reduced graph: n=66 lb= 22
+dfs_cnt= 1112, branc1_cnt= 571, branch2_cnt= 497
+bounding time: 0.0031 s, reducing time: 0.0037 s, binary time: 0.0015 s
+remove time: 0.0016 s, rollback time: 0.0005 s
+sel time: 0.0001 s
+plex time: 0.0002 s
+strong reduce time: 0.0007 s
+rm v cnt: 1625, rollback v cnt: 1625, S add v cnt: 615
+Plex: add time: 0.0001 s, remove time: 0.0000 s
+average S size: 4.01
+induce time: 0.0043 s
+The heuristic solution is the best solution!
+ground truth= 22
+use time : 0.0201 s
+
+2023/08/22 Tuesday 16:51:59 CST
+ok
+
