@@ -1,4 +1,4 @@
-# Code for directed $(k,\ell)$-plex.
+# Code for Maximum Directed $(k,\ell)$-Plex Searching.
 
 Written by ***Shuohao Gao*** in **HITSZ**.
 
