@@ -1,862 +1,345 @@
-#ifndef UPPERBOUND_H_INCLUDED
-#define UPPERBOUND_H_INCLUDED
+#ifndef UPPER_BOUND_H
+#define UPPER_BOUND_H
 
-#include "klplex.h"
+#include "Graph.h"
 
 class UpperBound
 {
 private:
-	int N;
-	int *pos_in,*pos_out;
-	int rm_cnt_in;//π0>=2ub
-	int rm_cnt_out;
-	int *h_in;
-	int *h_out;
-	int ub_in;
-	int ub_out;
-	int du_ub;//
-	//
-	int color ( Graph &g )
-	{
-		vector<set<int>> p;
-		set<int> st;
-		int cnt = 0;
-		//cnt
-		for ( int v : g.vertex->all() )
-		{
-			bool found = false;
-			for ( int i = 0; i < cnt; i++ )
-			{
-				bool ok = true;
-				for ( int u : p[i] )
-				{
-					if ( g.exist_edge ( u, v ) || g.exist_edge ( v, u ) )
-					{
-						ok = false;
-						break;
-					}
-				}
-				if ( ok )
-				{
-					p[i].insert ( v );
-					found = true;
-					break;
-				}
-			}
-			if ( !found )
-			{
-				cnt++;
-				set<int> temp;
-				temp.insert ( v );
-				p.push_back ( temp );
-			}
-		}
-		int ret = 0;
-		int k = min ( paramK, paramL ); //k
-		for ( int i = 0; i < cnt; i++ )
-			ret += min ( k, ( int ) p[i].size() );
-		return ret;
-	}
-	//g|S|+1,π0S,πivi
-	int partition_in_pre ( KLplex &S, Graph &g )
-	{
-		int *h=arrayManager->get_huafen();//vi∈S,h[s]πi
-		vector<int> temp;
-		int *vertex=arrayManager->get_n_q();
-		int n=0;
-		for(int v:S.vertex)
-			vertex[n++]=v;
-		for ( int u : U->all() )
-		{
-			bool found=false;
-			for (int i=0;i<n;i++)
-			{
-				int v=vertex[i];
-				if ( g.exist_edge ( u, v ) == false ) //
-				{
-					h[v]++;
-					found=true;
-					break;
-				}
-			}
-			if(!found)
-				temp.push_back(u);
-		}
-		int sz=temp.size();
-	#ifdef ER_FEN	
-		// if(sz)
-		// {
-		// 	double aaa=clock();
-		// 	int *vis=arrayManager->get_erfen();
-		// 	for(int i=0;i<sz;i++)
-		// 		vis[temp[i]]=i+1;
-		// 	vector<int> din(sz);
-		// 	vector<int> dout(sz);
-		// 	int cnt=0;
-		// 	for(int i=0;i<sz;i++)//temp
-		// 	{
-		// 		int u=temp[i];
-		// 		if(g.head[u] !=-1)
-		// 		{
-		// 			for(int j=g.head[u]; j!= g.next[u]; j++)
-		// 			{
-		// 				cnt++;
-		// 				if(g.rm_edge[j]) continue;
-		// 				int v=edges[j].to;
-		// 				if(vis[v])
-		// 				{
-		// 					dout[i]++;
-		// 					din[vis[v]-1]++;
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// 	din.push_back(-INF);
-		// 	din.push_back(INF);
-		// 	dout.push_back(-INF);
-		// 	dout.push_back(INF);
-		// 	sort(din.begin(),din.end());
-		// 	sort(dout.begin(),dout.end());
-		// 	int l=min(paramK,paramL),r=sz;
-		// 	while(l<r)
-		// 	{
-		// 		int mid=(l+r+1)>>1;
-		// 		int cnt_in=sz-get_cnt_lower_than(din,mid-paramL);
-		// 		int cnt_out=sz-get_cnt_lower_than(dout,mid-paramK);
-		// 		if(min(cnt_in,cnt_out) <mid)	r=mid-1;
-		// 		else l=mid;
-		// 	}
-		// 	// rgb[sz-r]++;
-		// 	sz=r;
-		// 	int ttt=temp.size();
-		// 	for(int i=0;i<ttt;i++)
-		// 		vis[temp[i]]=0;
-		// 	erfen+=clock()-aaa;
-		// }
-		if(sz)
-		{
-			double aaa=clock();
-			for(int i=0;i<n;i++)
-			{
-				temp.push_back(vertex[i]);
-			}
-			sz=temp.size();
-			
-			int *vis=arrayManager->get_erfen();//π0
-			for(int i=0;i<sz;i++)
-				vis[temp[i]]=i+1;
-			//szklplex
-			vector<int> din(sz);
-			vector<int> dout(sz);
-			
-			for(int i=0;i<sz;i++)//temp
-			{
-				int u=temp[i];
-				if(g.head[u] !=-1)
-				{
-					for(int j=g.head[u]; j!= g.next[u]; j++)
-					{
-						if(g.rm_edge[j]) continue;
-						int v=edges[j].to;
-						if(vis[v])
-						{
-							dout[i]++;
-							din[vis[v]-1]++;
-						}
-					}
-				}
-			}
-			//
-			din.push_back(-INF);
-			din.push_back(INF);
-			dout.push_back(-INF);
-			dout.push_back(INF);
-			sort(din.begin(),din.end());
-			sort(dout.begin(),dout.end());
-			int l=min(paramK,paramL),r=sz;
-			
-			while(l<r)
-			{
-				int mid=(l+r+1)>>1;
-				int cnt_in=sz-get_cnt_lower_than(din,mid-paramL);
-				int cnt_out=sz-get_cnt_lower_than(dout,mid-paramK);
-				if(min(cnt_in,cnt_out) <mid)	r=mid-1;
-				else l=mid;
-			}
-			sz=r- n;
-			int ttt=temp.size();
-			for(int i=0;i<ttt;i++)
-				vis[temp[i]]=0;
-			erfen+=clock()-aaa;
-		}
-	#endif
-		int ret = n + sz;
-		for ( int i=0;i<n;i++ )
-		{
-			int v=vertex[i];
-			ret += min ( h[v], paramL - n + S.get_in_degree ( v ) );
-		}
-		for(int i=0;i<n;i++)
-			h[vertex[i]]=0;
-		return ret;
-	}
-	//g|S|+1,π0S,πivi;π0
-	int partition_out_pre ( KLplex &S, Graph &g )
-	{
-		int *h=arrayManager->get_huafen();//vi∈S,h[s]πi
-		vector<int> temp;//:u∈temp,uS
-		int n=0;
-		int *vertex=arrayManager->get_n_q();
-		for(int v:S.vertex)
-			vertex[n++]=v;
-		for ( int u : U->all() )
-		{
-			bool found=false;
-			for(int i=0;i<n;i++)
-			{
-				int v=vertex[i];
-				if ( g.exist_edge ( v, u ) == false ) //
-				{
-					h[v]++;
-					found=true;
-					break;
-				}
-			}
-			if(!found)
-				temp.push_back(u);
-		}
-		int sz=temp.size();
-		// bool right=sz==(int)out->s->vertex.size();
-		// if(!right)
-		// {
-		// 	cout<<"PI0"<<endl;
-		// 	cout<<sz<<' '<<out->s->vertex.size()<<endl;
-		// 	for(int u:U->all())
-		// 	{
-		// 		int pos=out->pos[u];
-		// 		if(out->pos[u]==-1)
-		// 		{
-		// 			cout<<"U"<<endl;
-		// 		}else if(pos ==tot_vertex_cnt)
-		// 		{
-		// 			cout<<"PI0"<<endl;
-		// 		}else if(g.exist_edge(pos,u))
-		// 		{
-		// 			cout<<""<<endl;
-		// 		}
-		// 	}
-		// 	exit(1);
-		// }
-		// for(int u:temp)
-		// 	right &= out->s->has(u);
-		// if(!right)
-		// {
-		// 	cout<<"PI0"<<endl;
-		// 	exit(1);
-		// }
-		// int cnt1=0,cnt2=0;
-		// for(int v:S.vertex)
-		// {
-		// 	cnt1+=h[v];
-		// 	cnt2+=out->PI[v].size();
-		// }
-		// right &= cnt1==cnt2;
-		// if(!right)
-		// {
-		// 	cout<<"PI"<<endl;
-		// 	exit(1);
-		// }
-		// for(int u:U->all())
-		// {
-		// 	int pos=out->pos[u];
-		// 	if( pos!= -1 && pos !=tot_vertex_cnt)
-		// 	{
-		// 		right &= !g.exist_edge(pos,u);
-		// 	}
-		// }
-		// if(!right)
-		// {
-		// 	cout<<""<<endl;
-		// 	exit(1);
-		// }
-		// if(!right)
-		// {
-		// 	cout<<""<<endl;
-		// 	for(int v:S.vertex)
-		// 	{
-		// 		cout<<v<<' '<<out->PI[v].size()<<' '<<h[v]<<endl;
-		// 	}
-		// 	for(int u:U->all())
-		// 	{
-		// 		if(out->pos[u]==-1)
-		// 		{
-		// 			cout<<"U"<<endl;
-		// 		}
-		// 	}
-		// 	for(int i=0;i<tot_vertex_cnt;i++)
-		// 		if(out->pos[i]!=-1 && out->pos[i]!=tot_vertex_cnt)
-		// 		{
-		// 			cout<<i<<' '<<U->count(i)<<endl;
-		// 		}
-		// 	exit(1);
-		// }else cout<<""<<endl;
-	#ifdef ER_FEN
-		// if(sz)
-		// {
-		// 	double aaa=clock();
-		// 	int *vis=arrayManager->get_erfen();//π0
-		// 	for(int i=0;i<sz;i++)
-		// 		vis[temp[i]]=i+1;
-		// 	//szklplex
-		// 	vector<int> din(sz);
-		// 	vector<int> dout(sz);
-		// 	double st=clock();
-		// 	for(int i=0;i<sz;i++)//temp
-		// 	{
-		// 		int u=temp[i];
-		// 		if(g.head[u] !=-1)
-		// 		{
-		// 			for(int j=g.head[u]; j!= g.next[u]; j++)
-		// 			{
-		// 				if(g.rm_edge[j]) continue;
-		// 				int v=edges[j].to;
-		// 				if(vis[v])
-		// 				{
-		// 					dout[i]++;
-		// 					din[vis[v]-1]++;
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// 	//
-		// 	din.push_back(-INF);
-		// 	din.push_back(INF);
-		// 	dout.push_back(-INF);
-		// 	dout.push_back(INF);
-		// 	sort(din.begin(),din.end());
-		// 	sort(dout.begin(),dout.end());
-		// 	int l=min(paramK,paramL),r=sz;
-		// 	while(l<r)
-		// 	{
-		// 		int mid=(l+r+1)>>1;
-		// 		int cnt_in=sz-get_cnt_lower_than(din,mid-paramL);
-		// 		int cnt_out=sz-get_cnt_lower_than(dout,mid-paramK);
-		// 		if(min(cnt_in,cnt_out) <mid)	r=mid-1;
-		// 		else l=mid;
-		// 	}
-		// 	// rgb[sz-r]++;
-		// 	sz=r;
-		// 	for(int x:temp)
-		// 		vis[x]=0;
-		// 	erfen+=clock()-aaa;
-		// }
-		if(sz)
-		{
-			for(int i=0;i<n;i++)
-			{
-				temp.push_back(vertex[i]);
-			}
-			sz=temp.size();
-			double aaa=clock();
-			int *vis=arrayManager->get_erfen();//π0
-			for(int i=0;i<sz;i++)
-				vis[temp[i]]=i+1;
-			//szklplex
-			vector<int> din(sz);
-			vector<int> dout(sz);
-			for(int i=0;i<sz;i++)//temp
-			{
-				int u=temp[i];
-				if(g.head[u] !=-1)
-				{
-					for(int j=g.head[u]; j!= g.next[u]; j++)
-					{
-						if(g.rm_edge[j]) continue;
-						int v=edges[j].to;
-						if(vis[v])
-						{
-							dout[i]++;
-							din[vis[v]-1]++;
-						}
-					}
-				}
-			}
-			//
-			din.push_back(-INF);
-			din.push_back(INF);
-			dout.push_back(-INF);
-			dout.push_back(INF);
-			sort(din.begin(),din.end());
-			sort(dout.begin(),dout.end());
-			int l=min(paramK,paramL),r=sz;
-			while(l<r)
-			{
-				int mid=(l+r+1)>>1;
-				int cnt_in=sz-get_cnt_lower_than(din,mid-paramL);
-				int cnt_out=sz-get_cnt_lower_than(dout,mid-paramK);
-				if(min(cnt_in,cnt_out) <mid)	r=mid-1;
-				else l=mid;
-			}
-			sz=r-n;
-			int ttt=temp.size();
-			for(int i=0;i<ttt;i++)
-				vis[ temp[i] ]=0;
-			erfen+=clock()-aaa;
-		}
-	
-	#endif
-		int ret = n + sz;
-		for(int i=0;i<n;i++)
-		{
-			int v=vertex[i];
-			ret += min ( h[v], paramK - n + S.get_out_degree ( v ) ) ;
-		}
-		for(int i=0;i<n;i++)
-		{
-			int v=vertex[i];
-			h[v]=0;
-		}
-		return ret;
-	}
-	int partition_out ( KLplex &S, Graph &g )
-	{
-		int *h=h_out;//vi∈S,h[s]πi
-		vector<int> temp;//:u∈temp,uS
-		int n=0;
-		int *vertex=arrayManager->get_n_q();
-		for(int v:S.vertex)
-		{
-			vertex[n++]=v;
-			h[v]=0;
-		}
-		for ( int u : U->all() )
-		{
-			bool found=false;
-			for(int i=0;i<n;i++)
-			{
-				int v=vertex[i];
-				if ( g.exist_edge ( v, u ) == false ) //
-				{
-					h[v]++;
-					pos_out[u]=v;
-					found=true;
-					break;
-				}
-			}
-			if(!found)
-			{
-				temp.push_back(u);
-				pos_out[u]=N;
-			}
-		}
-		int sz=temp.size();
-	#ifdef ER_FEN
-		// if(sz)
-		// {
-		// 	double aaa=clock();
-		// 	int *vis=arrayManager->get_erfen();//π0
-		// 	for(int i=0;i<sz;i++)
-		// 		vis[temp[i]]=i+1;
-		// 	//szklplex
-		// 	vector<int> din(sz);
-		// 	vector<int> dout(sz);
-		// 	double st=clock();
-		// 	for(int i=0;i<sz;i++)//temp
-		// 	{
-		// 		int u=temp[i];
-		// 		if(g.head[u] !=-1)
-		// 		{
-		// 			for(int j=g.head[u]; j!= g.next[u]; j++)
-		// 			{
-		// 				if(g.rm_edge[j]) continue;
-		// 				int v=edges[j].to;
-		// 				if(vis[v])
-		// 				{
-		// 					dout[i]++;
-		// 					din[vis[v]-1]++;
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// 	//
-		// 	din.push_back(-INF);
-		// 	din.push_back(INF);
-		// 	dout.push_back(-INF);
-		// 	dout.push_back(INF);
-		// 	sort(din.begin(),din.end());
-		// 	sort(dout.begin(),dout.end());
-		// 	int l=min(paramK,paramL),r=sz;
-		// 	while(l<r)
-		// 	{
-		// 		int mid=(l+r+1)>>1;
-		// 		int cnt_in=sz-get_cnt_lower_than(din,mid-paramL);
-		// 		int cnt_out=sz-get_cnt_lower_than(dout,mid-paramK);
-		// 		if(min(cnt_in,cnt_out) <mid)	r=mid-1;
-		// 		else l=mid;
-		// 	}
-		// 	// rgb[sz-r]++;
-		// 	sz=r;
-		// 	for(int x:temp)
-		// 		vis[x]=0;
-		// 	erfen+=clock()-aaa;
-		// }
-		if(sz)
-		{
-			double aaa=clock();
-			for(int i=0;i<n;i++)
-			{
-				temp.push_back(vertex[i]);
-			}
-			sz=temp.size();
-			int *vis=arrayManager->get_erfen();//π0
-			for(int i=0;i<sz;i++)
-				vis[temp[i]]=i+1;
-			//szklplex
-			vector<int> din(sz);
-			vector<int> dout(sz);
-			for(int i=0;i<sz;i++)//temp
-			{
-				int u=temp[i];
-				if(g.head[u] !=-1)
-				{
-					for(int j=g.head[u]; j!= g.next[u]; j++)
-					{
-						if(g.rm_edge[j]) continue;
-						int v=edges[j].to;
-						if(vis[v])
-						{
-							dout[i]++;
-							din[vis[v]-1]++;
-						}
-					}
-				}
-			}
-			for(int i=0;i<sz;i++)
-				din[i]=min(din[i]+paramL,dout[i]+paramK);
-			//
-			din.push_back(-INF);
-			din.push_back(INF);
-			// dout.push_back(-INF);
-			// dout.push_back(INF);
-			sort(din.begin(),din.end());
-			// sort(dout.begin(),dout.end());
-			int l=min(paramK,paramL),r=sz;
-			while(l<r)
-			{
-				int mid=(l+r+1)>>1;
-				// int cnt_in=sz-get_cnt_lower_than(din,mid-paramL);
-				// int cnt_out=sz-get_cnt_lower_than(dout,mid-paramK);
-				// if(min(cnt_in,cnt_out) <mid)	r=mid-1;
-				if(sz-get_cnt_lower_than(din,mid) < mid) r=mid-1;
-				else l=mid;
-			}
-			sz=r-n;
-			int ttt=temp.size();
-			for(int i=0;i<ttt;i++)
-				vis[ temp[i] ]=0;
-			erfen+=clock()-aaa;
-		}
-	
-	#endif
-		int ret = n + sz;
-		for(int i=0;i<n;i++)
-		{
-			int v=vertex[i];
-			ret += min ( h[v], paramK - n + S.get_out_degree ( v ) ) ;
-		}
-		ub_out=ret;
-		rm_cnt_out=0;
-		return ret;
-	}
-	int partition_in ( KLplex &S, Graph &g )
-	{
-		int *h=h_in;//vi∈S,h[s]πi
-		vector<int> temp;//π0
-		int *vertex=arrayManager->get_n_q();
-		int n=0;
-		for(int v:S.vertex)
-		{
-			vertex[n++]=v;
-			h[v]=0;
-		}
-		for ( int u : U->all() )
-		{
-			bool found=false;
-			for (int i=0;i<n;i++)
-			{
-				int v=vertex[i];
-				if ( g.exist_edge ( u, v ) == false ) //
-				{
-					h[v]++;
-					pos_in[u]=v;
-					found=true;
-					break;
-				}
-			}
-			if(!found)
-			{
-				temp.push_back(u);
-				pos_in[u]=N;
-			}
-		}
-		int sz=temp.size();
-	#ifdef ER_FEN	
-		// if(sz)
-		// {
-		// 	double aaa=clock();
-		// 	int *vis=arrayManager->get_erfen();
-		// 	for(int i=0;i<sz;i++)
-		// 		vis[temp[i]]=i+1;
-		// 	vector<int> din(sz);
-		// 	vector<int> dout(sz);
-		// 	int cnt=0;
-		// 	for(int i=0;i<sz;i++)//temp
-		// 	{
-		// 		int u=temp[i];
-		// 		if(g.head[u] !=-1)
-		// 		{
-		// 			for(int j=g.head[u]; j!= g.next[u]; j++)
-		// 			{
-		// 				cnt++;
-		// 				if(g.rm_edge[j]) continue;
-		// 				int v=edges[j].to;
-		// 				if(vis[v])
-		// 				{
-		// 					dout[i]++;
-		// 					din[vis[v]-1]++;
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// 	din.push_back(-INF);
-		// 	din.push_back(INF);
-		// 	dout.push_back(-INF);
-		// 	dout.push_back(INF);
-		// 	sort(din.begin(),din.end());
-		// 	sort(dout.begin(),dout.end());
-		// 	int l=min(paramK,paramL),r=sz;
-		// 	while(l<r)
-		// 	{
-		// 		int mid=(l+r+1)>>1;
-		// 		int cnt_in=sz-get_cnt_lower_than(din,mid-paramL);
-		// 		int cnt_out=sz-get_cnt_lower_than(dout,mid-paramK);
-		// 		if(min(cnt_in,cnt_out) <mid)	r=mid-1;
-		// 		else l=mid;
-		// 	}
-		// 	// rgb[sz-r]++;
-		// 	sz=r;
-		// 	int ttt=temp.size();
-		// 	for(int i=0;i<ttt;i++)
-		// 		vis[temp[i]]=0;
-		// 	erfen+=clock()-aaa;
-		// }
-		if(sz)
-		{
-			double aaa=clock();
-			for(int i=0;i<n;i++)
-			{
-				temp.push_back(vertex[i]);
-			}
-			sz=temp.size();
-			int *vis=arrayManager->get_erfen();//π0
-			for(int i=0;i<sz;i++)
-				vis[temp[i]]=i+1;
-			//szklplex
-			vector<int> din(sz);
-			vector<int> dout(sz);
-			for(int i=0;i<sz;i++)//temp
-			{
-				int u=temp[i];
-				if(g.head[u] !=-1)
-				{
-					for(int j=g.head[u]; j!= g.next[u]; j++)
-					{
-						if(g.rm_edge[j]) continue;
-						int v=edges[j].to;
-						if(vis[v])
-						{
-							dout[i]++;
-							din[vis[v]-1]++;
-						}
-					}
-				}
-			}
-			for(int i=0;i<sz;i++)
-				din[i]=min(din[i]+paramL,dout[i]+paramK);
-			//
-			din.push_back(-INF);
-			din.push_back(INF);
-			// dout.push_back(-INF);
-			// dout.push_back(INF);
-			sort(din.begin(),din.end());
-			// sort(dout.begin(),dout.end());
-			int l=min(paramK,paramL),r=sz;
-			while(l<r)
-			{
-				int mid=(l+r+1)>>1;
-				// int cnt_in=sz-get_cnt_lower_than(din,mid-paramL);
-				// int cnt_out=sz-get_cnt_lower_than(dout,mid-paramK);
-				// if(min(cnt_in,cnt_out) <mid)	r=mid-1;
-				if(sz-get_cnt_lower_than(din,mid) < mid) r=mid-1;
-				else l=mid;
-			}
-			sz=r- n;
-			int ttt=temp.size();
-			for(int i=0;i<ttt;i++)
-				vis[temp[i]]=0;
-			erfen+=clock()-aaa;
-		}
-	#endif
-		int ret = n + sz;
-		for ( int i=0;i<n;i++ )
-		{
-			int v=vertex[i];
-			ret += min ( h[v], paramL - n + S.get_in_degree ( v ) );
-		}
-		ub_in=ret;
-		rm_cnt_in=0;
-		return ret;
-	}
-	inline int partition_estimate ( KLplex &S, Graph &g )
-	{
-		return min ( partition_in ( S, g ), partition_out ( S, g ) );
-	}
-
-	int bi_partition(Graph &g)
-	{
-		int sz=g.vertex_cnt();
-		vector<int> din(sz);
-		vector<int> dout(sz);
-		int i=0;
-		for(int v:g.vertex->all())
-		{
-			din[i]=g.get_in_degree(v);
-			dout[i]=g.get_out_degree(v);
-			i++;
-		}
-		din.push_back(-INF);
-		din.push_back(INF);
-		dout.push_back(-INF);
-		dout.push_back(INF);
-		sort(din.begin(),din.end());
-		sort(dout.begin(),dout.end());
-		int l=min(paramK,paramL),r=sz;
-		while(l<r)
-		{
-			int mid=(l+r+1)>>1;
-			int cnt_in=sz-get_cnt_lower_than(din,mid-paramL);
-			int cnt_out=sz-get_cnt_lower_than(dout,mid-paramK);
-			if(min(cnt_in,cnt_out) <mid)	r=mid-1;
-			else l=mid;
-		}
-		return r;
-	}
+    Graph *g;
+    Plex *S;
+    int N;
+    int pi0_sz_in, pi0_sz_out;
+    int ub_pi0_in, ub_pi0_out;
+    int rm_from_pi0_in, rm_from_pi0_out;
+    vector<int> h_in, h_out;
+    vector<int> din, dout, cnt;
+    vector<int> pos_in, pos_out;
+    vector<int> set_pi0_in, set_pi0_out; // store Pi[0], common out neighbors of S
 public:
-	void init()
-	{
-		int n=tot_vertex_cnt;
-		N=n;
-		pos_in=new int[n];
-		pos_out=new int[n];
-		memset(pos_in,-1,sizeof(int)*n);
-		memset(pos_out,-1,sizeof(int)*n);
-		rm_cnt_in=0;
-		rm_cnt_out=0;
-		h_in=new int[n];
-		h_out=new int[n];
-		memset(h_in,0,sizeof(int)*n);
-		memset(h_out,0,sizeof(int)*n);
-	}
-	inline int first_estimate(Graph &g)
-	{
-		return bi_partition(g);
-	}
-	//
-	int simple_estimate ( KLplex &S, Graph &g )
-	{
-		int min_dout = INF; //S
-		int min_din = INF; //S
-		for ( int u : S.vertex )
-		{
-			min_dout = min ( min_dout, g.get_out_degree ( u ) );
-			min_din = min ( min_din, g.get_in_degree ( u ) );
-		}
-		return du_ub = min ( min_dout + paramK, min_din + paramL );
-	}
-	//plexKLplex
-	// inline int get_upper_bound ( KLplex &S, Graph &g )
-	// {
-	// 	if ( !S.vertex_cnt() )
-	// 	{
-	// 		if ( g.vertex_cnt() > 500 )
-	// 			return g.vertex_cnt() ;
-	// 		else
-	// 			return bi_partition ( g );
-	// 	}
-	// 	else
-	// 	{
-	// 		// int a= partition_estimate ( S, g );
-	// 		// int b=RGB(S,g);
-	// 		// // rgb[b-a]++;
-	// 		// rgb[a]++;
-	// 		// return min(a,b);
+    double binary_time;
+    UpperBound(Graph *_g, Plex *_S)
+    {
+        g = _g;
+        S = _S;
+        int n = g->get_n();
+        binary_time = 0;
+        N = g->N;
+        vector<vector<int> *> temp{&h_in, &h_out, &din,
+                                   &dout, &pos_in, &pos_out,
+                                   &set_pi0_in, &set_pi0_out};
+        for (auto s : temp)
+            s->resize(N);
+        cnt.resize(N + min(paramK, paramL));
+    }
+    ~UpperBound()
+    {
+    }
+    /**
+     * pi[] store S and Pi_0
+     * @return at least |S|
+     */
+    int binaryEstimateUB(vector<int> &pi, int n)
+    {
+#ifdef NO_ERFEN
+        return n;
+#endif
+        ll start_binary_time = get_system_time_microsecond();
+        fill(din.begin(), din.begin() + n, 0);
+        fill(dout.begin(), dout.begin() + n, 0);
+        for (int i = 0; i < n; i++)
+            for (int j = i + 1; j < n; j++)
+            {
+                int u = pi[i], v = pi[j];
+                if (g->exist_edge(u, v))
+                    dout[i]++, din[j]++;
+                if (g->exist_edge(v, u))
+                    dout[j]++, din[i]++;
+            }
+        for (int i = 0; i < n; i++)
+        {
+            cnt[min(dout[i] + paramK, din[i] + paramL)]++;
+        }
+        int ub_idx = n + min(paramK, paramL);
+        cnt[ub_idx] = 0;
+        for (int i = ub_idx - 1; i; i--)
+            cnt[i] += cnt[i + 1];
+        int l = min(paramK, paramL), r = n;
+        while (l < r)
+        {
+            int mid = l + r + 1 >> 1;
+            if (cnt[mid] >= mid)
+                l = mid;
+            else
+                r = mid - 1;
+        }
+        fill(cnt.begin(), cnt.begin() + n + min(paramK, paramL), 0);
+        binary_time += get_system_time_microsecond() - start_binary_time;
+        return r;
+    }
+    int partIn()
+    {
+        pi0_sz_in = 0;
+        // h_in[u] : the count of vertices {v} which v->u is not in G
+        for (int v : S->vertex)
+            set_pi0_in[pi0_sz_in++] = v, h_in[v] = 0;
+        int s_n=S->get_n();
+        vector<vector<int>> Pi(s_n);
+        for (int v : g->vertex) // traversal candidate set C
+        {
+            if (S->has(v))
+                continue;
+            bool ok = 0;
+            for(int i=0;i<s_n;i++)
+            {
+                int u=S->vertex[i];
+                if (!g->exist_edge(v, u))
+                {
+                    h_in[u]++;
+                    pos_in[v] = u;
+                    ok = 1;
+                    Pi[i].push_back(v);
+                    break;
+                }
+            }
+            if (!ok) // v is inserted into Pi_0
+            {
+                pos_in[v] = pi0_sz_in + N;
+                set_pi0_in[pi0_sz_in++] = v;
+            }
+        }
+    #ifndef NO_REFINE_ORDER
+        // if Pi_i is small, then we tear down it and insert the vertices into other Pi_j
+        for(int i=0;i<s_n;i++)
+        {
+            int u=S->vertex[i];
+            if (h_in[u] <= paramL - (s_n - S->get_in_degree(u)))
+            {
+                h_in[u]=0;
+                auto &temp = Pi[i];
+                for (int v : temp)
+                {
+                    bool ok = 0;
+                    for(int j=i+1;j<s_n;j++)
+                    {
+                        int w=S->vertex[j];
+                        if (h_in[w] >= paramL - (s_n - S->get_in_degree(w)) && !g->exist_edge(v, w))
+                        {
+                            h_in[w]++;
+                            pos_in[v] = w;
+                            ok = 1;
+                            Pi[j].push_back(v);
+                            break;
+                        }
+                    }
+                    if (!ok) // v is inserted into Pi_0
+                    {
+                        pos_in[v] = pi0_sz_in + N;
+                        set_pi0_in[pi0_sz_in++] = v;
+                    }
+                }
+            }
+        }
+    #endif
+        int ret = 0;
+        for (int u : S->vertex)
+            ret += min(h_in[u], paramL - (S->get_n() - S->get_in_degree(u)));
+        if (ret + pi0_sz_in <= lb)
+            return lb;
+        ub_pi0_in = binaryEstimateUB(set_pi0_in, pi0_sz_in);
+        rm_from_pi0_in = 0;
+        return ret + ub_pi0_in;
+    }
+    int partOut()
+    {
+        pi0_sz_out = 0;
+        for (int v : S->vertex)
+            set_pi0_out[pi0_sz_out++] = v, h_out[v] = 0;
+        int s_n=S->get_n();
+        vector<vector<int>> Pi(s_n);
+        for (int v : g->vertex)
+        {
+            if (S->has(v))
+                continue;
+            bool ok = 0;
+            for(int i=0;i<s_n;i++)
+            {
+                int u=S->vertex[i];
+                if (!g->exist_edge(u, v))
+                {
+                    h_out[u]++;
+                    pos_out[v] = u;
+                    ok = 1;
+                    Pi[i].push_back(v);
+                    break;
+                }
+            }
+            if (!ok)
+            {
+                pos_out[v] = N + pi0_sz_out;
+                set_pi0_out[pi0_sz_out++] = v;
+            }
+        }
+    #ifndef NO_REFINE_ORDER
+        // if Pi_i is small, then we tear down it and insert the vertices into other Pi_j
+        for(int i=0;i<s_n;i++)
+        {
+            int u=S->vertex[i];
+            if (h_out[u] <= paramK - (s_n - S->get_out_degree(u)))
+            {
+                h_out[u]=0;
+                auto &temp = Pi[i];
+                for (int v : temp)
+                {
+                    bool ok = 0;
+                    for(int j=i+1;j<s_n;j++)
+                    {
+                        int w=S->vertex[j];
+                        if (h_out[w] >= paramK - (s_n - S->get_out_degree(w)) && !g->exist_edge(w, v))
+                        {
+                            h_out[w]++;
+                            pos_out[v] = w;
+                            ok = 1;
+                            Pi[j].push_back(v);
+                            break;
+                        }
+                    }
+                    if (!ok) // v is inserted into Pi_0
+                    {
+                        pos_out[v] = pi0_sz_out + N;
+                        set_pi0_out[pi0_sz_out++] = v;
+                    }
+                }
+            }
+        }
+    #endif
+        int ret = 0;
+        for (int u : S->vertex)
+            ret += min(h_out[u], paramK - (S->get_n() - S->get_out_degree(u)));
+        if (ret + pi0_sz_out <= lb)
+            return lb;
+        ub_pi0_out = binaryEstimateUB(set_pi0_out, pi0_sz_out);
+        rm_from_pi0_out = 0;
+        return ret + ub_pi0_out;
+    }
+    int degreeUB()
+    {
+        int ub = g->get_n();
+        for (ui v : S->vertex)
+            ub = min(ub, g->get_pd(v));
+        return ub;
+    }
+    int partUB()
+    {
+        int a = partOut();
+        if (a <= lb)
+            return a;
+        int b = partIn();
+        return b;
+    }
+    int get_upper_bound()
+    {
+        return partUB();
+        int a = degreeUB();
+        int b = partUB();
+        return min(a, b);
+    }
+    /**
+     * compared with parent branch, current branch:
+     * removed u;
+     * v_removed are reduced from candidate set C.
+     * So we can use the old information to get ub
+     */
+    int get_old_upper_bound(int u, vector<int> &v_removed)
+    {
+        if (get_old_in_UB(u, v_removed) <= lb)
+            return lb;
+        return get_old_out_UB(u, v_removed);
+    }
+    int get_old_in_UB(int u, vector<int> &v_removed)
+    {
+        if (pos_in[u] >= N) // u in Pi0
+        {
+            assert(pi0_sz_in > 0);
+            int idx = pos_in[u] - N;
+            swap(set_pi0_in[idx], set_pi0_in[--pi0_sz_in]);
+            rm_from_pi0_in++;
+        }
+        else
+        {
+            h_in[pos_in[u]]--;
+        }
+        for (int u : v_removed)
+        {
+            if (pos_in[u] >= N) // u in Pi0
+            {
+                assert(pi0_sz_in > 0);
+                int idx = pos_in[u] - N;
+                swap(set_pi0_in[idx], set_pi0_in[--pi0_sz_in]);
+                rm_from_pi0_in++;
+            }
+            else
+            {
+                h_in[pos_in[u]]--;
+            }
+        }
+        int ub_in = 0;
+        for (int v : S->vertex)
+        {
+            ub_in += min(h_in[v], paramL - (S->get_n() - S->get_in_degree(v)));
+            assert(h_in[v] >= 0);
+        }
+        if (ub_in + ub_pi0_in <= lb)
+            return lb;
+        if (ub_in + ub_pi0_in - rm_from_pi0_in > lb)
+            return lb + 1;
+        rm_from_pi0_in = 0;
+        ub_pi0_in = binaryEstimateUB(set_pi0_in, pi0_sz_in);
+        ub_in += ub_pi0_in;
+        return ub_in;
+    }
+    int get_old_out_UB(int u, vector<int> &v_removed)
+    {
+        if (pos_out[u] >= N) // u in Pi0
+        {
+            assert(pi0_sz_out > 0);
+            int idx = pos_out[u] - N;
+            swap(set_pi0_out[idx], set_pi0_out[--pi0_sz_out]);
+            rm_from_pi0_out++;
+        }
+        else
+        {
+            h_out[pos_out[u]]--;
+        }
+        for (int u : v_removed)
+        {
+            if (pos_out[u] >= N) // u in Pi0
+            {
+                assert(pi0_sz_out > 0);
+                int idx = pos_out[u] - N;
+                swap(set_pi0_out[idx], set_pi0_out[--pi0_sz_out]);
+                rm_from_pi0_out++;
+            }
+            else
+            {
+                h_out[pos_out[u]]--;
+            }
+        }
+        int ub_out = 0;
+        for (int v : S->vertex)
+        {
+            assert(h_out[v] >= 0);
+            ub_out += min(h_out[v], paramK - (S->get_n() - S->get_out_degree(v)));
+        }
+        if (ub_out + ub_pi0_out <= lb)
+            return lb;
+        if (ub_out + ub_pi0_out - rm_from_pi0_out > lb)
+            return lb + 1;
+        rm_from_pi0_out = 0;
+        ub_pi0_out = binaryEstimateUB(set_pi0_out, pi0_sz_out);
+        ub_out += ub_pi0_out;
+        return ub_out;
+    }
+};
 
-	// 		// return partition_estimate(S,g);
-	// 		// return simple_estimate(S,g);
-	// 		double st=clock();
-	// 		int a=simple_estimate(S,g);
-	// 		int b=partition_estimate(S,g);
-	// 		// rgb[a-b]++;
-	// 		uptime+=clock()-st;
-	// 		return min(a,b);
-	// 	}
-	// }
-	inline int getNewUpperBound()
-	{
-		double st=clock();
-		int a=simple_estimate(S,g);
-		int b=partition_estimate(S,g);
-		uptime+=clock()-st;
-		return min(a,b);
-	}
-	inline int getIncremental(int vertex_remove_from_U)
-	{
-		int p_in=pos_in[vertex_remove_from_U];
-		if(p_in==N)
-		{
-			rm_cnt_in++;
-			if(ub_in - rm_cnt_in <=lb)
-			{
-				ub_in=partition_in(S,g);
-			}
-		}else 
-		{
-			int already=paramL-S.get_non_in_neighbor(p_in,g);
-			int &val=h_in[p_in];
-			ub_in-=min(already,val);
-			val--;
-			ub_in+=min(already,val);
-		}
-
-		int p_out=pos_out[vertex_remove_from_U];
-		if(p_out==N)//π0
-		{
-			rm_cnt_out++;
-			if(ub_out - rm_cnt_out <= lb)
-			{
-				ub_out=partition_out(S,g);
-			}
-		}else 
-		{
-			int already=paramK-S.get_non_out_neighbor(p_out,g);
-			int &val=h_out[p_out];
-			ub_out-=min(already,val);
-			val--;
-			ub_out+=min(already,val);
-		}
-		return min(du_ub,min(ub_in,ub_out));
-	}
-}estimator;
-
-
-#endif // UPPERBOUND_H_INCLUDED
+#endif

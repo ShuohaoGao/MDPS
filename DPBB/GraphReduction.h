@@ -1,12 +1,24 @@
-#ifndef REDUCTION_H
-#define REDUCTION_H
+#ifndef GRAPHREDUCTION_H
+#define GRAPHREDUCTION_H
 
+#include "../DPHeuris/Undirected_Graph.h"
 #include "Graph.h"
-#include "Undirected_Graph.h"
 
-class Reduction
+class GraphReduction
 {
 private:
+    /*
+        assume u<v
+        common_neighbor_cnt[u][v] == |N_out(u) \cap N_out(v)|
+        common_neighbor_cnt[v][u] == |N_in(u) \cap N_in(v)|
+    */
+    vector<vector<int>> common_neighbor_cnt;
+    // out_in_neighbor_cnt[u][v] == |N_out(u) \cap N_in(v)|
+    vector<vector<int>> out_in_neighbor_cnt;
+    // state[a][b]==1  <=> a,b can not occur in a larger plex with size > lb
+    vector<vector<bool>> state;
+
+    int new_rule_cnt;
     Map *common_out_neighbor_cnt, *common_in_neighbor_cnt;
     vector<pii> undirected_edges; // undirected
     Graph *g;
@@ -95,22 +107,44 @@ private:
             }
             ug->remove_vertex(u);
         }
-        delete q;
+        delete[] q;
+        for(int u:g->vertex)
+        {
+            for(int a:g->neighbors_out(u))
+            {
+                for(int b:g->neighbors_out(u))
+                {
+                    if(!g->exist_edge(a,b) && !g->exist_edge(b,a))
+                    {
+                        common_in_neighbor_cnt->increment({a,b});
+                    }
+                }
+            }
+            for(int a:g->neighbors_in(u))
+            {
+                for(int b:g->neighbors_in(u))
+                {
+                    if(!g->exist_edge(a,b) && !g->exist_edge(b,a))
+                    {
+                        common_out_neighbor_cnt->increment({a,b});
+                    }
+                }
+            }
+        }
     }
 
     void init()
     {
-        m = g->m;
-        n = g->n;
+        n = g->get_n();
         undirected_edges.resize(m * 2);
-        //treat directed edges as undirected edges
-        pii *edges = g->initialEdges;
-        for (ui i = 0; i < m; i++)
-        {
-            ui a = edges[i].x, b = edges[i].y;
-            undirected_edges[i << 1] = {a, b};
-            undirected_edges[i << 1 | 1] = {b, a};
-        }
+        // treat directed edges as undirected edges
+        ui idx = 0;
+        for (int u : g->vertex)
+            for (int v : g->neighbors_out(u))
+            {
+                undirected_edges[idx++] = {u, v};
+                undirected_edges[idx++] = {v, u};
+            }
         // sort and unique
         unique_pii(undirected_edges, n);
         m = undirected_edges.size();
@@ -118,125 +152,203 @@ private:
             delete ug;
         ug = new Undirected_Graph(n, undirected_edges);
     }
-
+    void compute_neighbor_cnt()
+    {
+        common_neighbor_cnt.clear();
+        common_neighbor_cnt.resize(n);
+        for (auto &s : common_neighbor_cnt)
+            s.resize(n,0);
+        out_in_neighbor_cnt.clear();
+        out_in_neighbor_cnt.resize(n);
+        for (auto &s : out_in_neighbor_cnt)
+            s.resize(n,0);
+        for (int u : g->vertex)
+        {
+            vector<ui> out = g->neighbors_out(u);
+            vector<ui> in = g->neighbors_in(u);
+            // u is the common in-neighbor of a,b
+            for (int a : out)
+                for (int b : out)
+                {
+                    if (b == a)
+                        break;
+                    else if (a < b)
+                        common_neighbor_cnt[b][a]++;
+                    else // a>b
+                        common_neighbor_cnt[a][b]++;
+                }
+            // u is the common out-neighbor of a,b
+            for (int a : in)
+                for (int b : in)
+                {
+                    if (b == a)
+                        break;
+                    else if (a < b)
+                        common_neighbor_cnt[a][b]++;
+                    else // b<a
+                        common_neighbor_cnt[b][a]++;
+                }
+            // b-->u-->a
+            for (int a : out)
+                for (int b : in)
+                {
+                    if (b == a)
+                        continue;
+                    out_in_neighbor_cnt[b][a]++;
+                }
+        }
+    }
+    void update_state()
+    {
+        for (int a : g->vertex)
+            for (int b : g->vertex)
+            {
+                if (b == a)
+                    break;
+                else if (a > b)
+                    swap(a, b);
+                int edge_cnt = (g->exist_edge(a, b) ? 1 : 0) + (g->exist_edge(b, a) ? 1 : 0);
+                // common out-neighbors of a,b
+                if (common_neighbor_cnt[a][b] <= lb - 2 * paramK + 2 - edge_cnt)
+                {
+                    state[b][a]=state[a][b] = 1;
+                    continue;
+                }
+                // common in-neighbors of a,b
+                if (common_neighbor_cnt[b][a] <= lb - 2 * paramL + 2 - edge_cnt)
+                {
+                    state[b][a]=state[a][b] = 1;
+                    continue;
+                }
+                if (out_in_neighbor_cnt[a][b] <= lb - paramK - paramL + 2 - edge_cnt || out_in_neighbor_cnt[b][a] <= lb - paramK - paramL + 2 - edge_cnt)
+                {
+                    state[b][a]=state[a][b] = 1;
+                }
+            }
+    }
 public:
-    Reduction(Graph *_g)
+    double graph_reduction_time;
+    GraphReduction(Graph *_g)
     {
         g = _g;
-        n = g->n;
-        common_in_neighbor_cnt = get_suitable_map(n, g->m);
-        common_out_neighbor_cnt = get_suitable_map(n, g->m);
+        n = g->get_n();
+        m = g->get_m();
+        common_in_neighbor_cnt = get_suitable_map(n, m);
+        common_out_neighbor_cnt = get_suitable_map(n, m);
         ug = nullptr;
         init();
+        list_triangles();
+        double st_time = get_system_time_microsecond();
+        state.resize(n);
+        for (auto &s : state)
+            s.resize(n);
+        compute_neighbor_cnt();
+        update_state();
+        graph_reduction_time = get_system_time_microsecond() - st_time;
     }
-    ~Reduction()
+    ~GraphReduction()
     {
         delete common_in_neighbor_cnt;
         delete common_out_neighbor_cnt;
     }
-    void strong_reduce(bool first_reduce = false)
+    vector<vector<bool>>* get_state()
     {
-        double st_time = get_system_time_microsecond();
-        list_triangles();
-        printf("Time cost of listing triangles: %.4lf s\n", (get_system_time_microsecond() - st_time) / 1e6);
-        Queue *q_e = new Queue(g->m + 1); // queue of edges to be removed
-        queue<int> q_v;                   // queue of vertices to be removed
-        pii *edges = g->initialEdges;
-        // csapp improvement
-        int lb_2k=lb-2*paramK;
-        int lb_2l=lb-2*paramL;
-        int lb_2k1=lb_2k+1;
-        int lb_2l1=lb_2l+1;
-        for (int i = 0; i < g->m; i++)
+        return &state;
+    }
+    void weak_reduce()
+    {
+        int *q=new int[g->N];
+        vector<bool> vis(g->N);
+        int hh=0,tt=-1;
+        for(int u:g->vertex)
         {
-            int u = edges[i].x;
-            int v = edges[i].y;
-            if (g->exist_edge(v, u))
+            if(g->get_pd(u)<=lb)
             {
-                if (common_out_neighbor_cnt->get({u, v}) <= lb_2k || common_in_neighbor_cnt->get({u, v}) <= lb_2l)
-                {
-                    q_e->push(g->map.get(u, v));
-                }
-            }
-            else
-            {
-                if (common_out_neighbor_cnt->get({u, v}) <= lb_2k1 || common_in_neighbor_cnt->get({u, v}) <= lb_2l1)
-                {
-                    q_e->push(g->map.get(u, v));
-                }
+                q[++tt]=u;
+                vis[u]=1;
             }
         }
-        bool *v_remove = new bool[n];
-        memset(v_remove, 0, sizeof(bool) * n);
-        if (first_reduce)
+        while(hh<=tt)
         {
-            while (q_e->size())
+            int u=q[hh++];
+            for(int v:g->neighbors_out(u))
             {
-                auto id = q_e->front();
-                q_e->pop();
-                g->remove_edge_forever(id);
+                if(!vis[v] && g->get_in_degree(v)-1+paramL <= lb)
+                {
+                    vis[v]=1;
+                    q[++tt]=v;
+                }
             }
-            g->refresh();
-            q_e->clear(g->m);
-            init();
-            common_in_neighbor_cnt->clear();
-            common_out_neighbor_cnt->clear();
-            list_triangles();
-            for (int i = 0; i < g->m; i++)
+            for(int v:g->neighbors_in(u))
             {
-                int u = edges[i].x;
-                int v = edges[i].y;
+                if(!vis[v] && g->get_out_degree(v)-1+paramK <= lb)
+                {
+                    vis[v]=1;
+                    q[++tt]=v;
+                }
+            }
+            g->remove_vertex_forever(u);
+        }
+    }
+    void strong_reduce()
+    {
+        // cout<<"before reduce n= "<<g->get_n()<<endl;
+        double st_time = get_system_time_microsecond();
+        weak_reduce();
+        Queue *q_e = new Queue(g->N * g->N); // queue of edges to be removed
+        queue<int> q_v;                      // queue of vertices to be removed
+        // csapp improvement
+        int lb_2k = lb - 2 * paramK;
+        int lb_2l = lb - 2 * paramL;
+        int lb_2k1 = lb_2k + 1;
+        int lb_2l1 = lb_2l + 1;
+        for (int u : g->vertex)
+        {
+            for (int v : g->neighbors_out(u))
+            {
                 if (g->exist_edge(v, u))
                 {
                     if (common_out_neighbor_cnt->get({u, v}) <= lb_2k || common_in_neighbor_cnt->get({u, v}) <= lb_2l)
                     {
-                        q_e->push(g->map.get(u, v));
+                        q_e->push(g->get_edge_id(u, v));
                     }
                 }
                 else
                 {
                     if (common_out_neighbor_cnt->get({u, v}) <= lb_2k1 || common_in_neighbor_cnt->get({u, v}) <= lb_2l1)
                     {
-                        q_e->push(g->map.get(u, v));
+                        q_e->push(g->get_edge_id(u, v));
                     }
                 }
             }
-            for (int i = 0; i < g->n; i++)
-                if (g->pd[i] <= lb)
-                {
-                    q_v.push(i);
-                    v_remove[i] = 1;
-                }
         }
+        bool *v_remove = new bool[n];
+        memset(v_remove, 0, sizeof(bool) * n);
         while (q_v.size() || q_e->size())
         {
-            while (q_e->size()) 
+            while (q_e->size())
             {
                 ui edge_id = q_e->front();
+                pii temp=g->get_edge_by_id(edge_id);
                 q_e->pop();
-                int from = edges[edge_id].x, to = edges[edge_id].y;
-                if (!g->remove_edge_forever(edge_id)) 
-                {
-                    continue;
-                }
-                if (g->pd[from] <= lb && !v_remove[from])
+                int from = temp.x, to = temp.y;
+                g->remove_edge_forever(from, to);
+                if (g->get_pd(from) <= lb && !v_remove[from])
                 {
                     q_v.push(from);
                     v_remove[from] = 1;
                 }
-                if (g->pd[to] <= lb && !v_remove[to])
+                if (g->get_pd(to) <= lb && !v_remove[to])
                 {
                     q_v.push(to);
                     v_remove[to] = 1;
                 }
-                int from_cnt = g->din[from] + g->dout[from];
-                int to_cnt = g->din[to] + g->dout[to];
+                int from_cnt = g->get_in_degree(from) + g->get_out_degree(from);
+                int to_cnt = g->get_in_degree(to) + g->get_out_degree(to);
                 if (from_cnt <= to_cnt)
                 {
-                    // for (int w : g->neighbor_out(from))
-                    for (ui i = g->h.h[from]; i < g->orig_m; i = g->h.edges[i].ne)
+                    for (int w : g->neighbors_out(from))
                     {
-                        int w = g->initialEdges[i].y;
                         if (v_remove[w])
                             continue;
                         bool w_to = g->exist_edge(w, to);
@@ -250,8 +362,8 @@ public:
                         {
                             if (val_now <= lb_2l)
                             {
-                                q_e->push(g->map.get(to, w));
-                                q_e->push(g->map.get(w, to));
+                                q_e->push(g->get_edge_id(to, w));
+                                q_e->push(g->get_edge_id(w, to));
                             }
                         }
                         else
@@ -260,11 +372,11 @@ public:
                             {
                                 if (w_to)
                                 {
-                                    q_e->push(g->map.get(w, to));
+                                    q_e->push(g->get_edge_id(w, to));
                                 }
                                 else
                                 {
-                                    q_e->push(g->map.get(to, w));
+                                    q_e->push(g->get_edge_id(to, w));
                                 }
                             }
                         }
@@ -275,23 +387,21 @@ public:
                             {
                                 if (val <= lb_2k)
                                 {
-                                    q_e->push(g->map.get(from, w));
-                                    q_e->push(g->map.get(w, from));
+                                    q_e->push(g->get_edge_id(from, w));
+                                    q_e->push(g->get_edge_id(w, from));
                                 }
                             }
                             else
                             {
                                 if (val <= lb_2k1)
                                 {
-                                    q_e->push(g->map.get(from, w));
+                                    q_e->push(g->get_edge_id(from, w));
                                 }
                             }
                         }
                     }
-                    // for (int w : g->neighbor_in(from))
-                    for (ui i = g->reverse_h.h[from]; i < g->orig_m; i = g->reverse_h.edges[i].ne)
+                    for (int w : g->neighbors_in(from))
                     {
-                        int w = g->initialEdges[i].x;
                         if (v_remove[w] || !g->exist_edge(w, to))
                             continue;
                         if (g->exist_edge(from, w))
@@ -299,16 +409,14 @@ public:
                         int val = common_out_neighbor_cnt->reduce({from, w});
                         if (val <= lb_2k1)
                         {
-                            q_e->push(g->map.get(w, from));
+                            q_e->push(g->get_edge_id(w, from));
                         }
                     }
                 }
                 else
                 {
-                    // for (int w : g->neighbor_in(to))
-                    for (ui i = g->reverse_h.h[to]; i < g->orig_m; i = g->reverse_h.edges[i].ne)
+                    for (int w : g->neighbors_in(to))
                     {
-                        int w = g->initialEdges[i].x;
                         if (v_remove[w])
                             continue;
                         bool w_from = g->exist_edge(w, from);
@@ -322,8 +430,8 @@ public:
                         {
                             if (val_now <= lb_2k)
                             {
-                                q_e->push(g->map.get(from, w));
-                                q_e->push(g->map.get(w, from));
+                                q_e->push(g->get_edge_id(from, w));
+                                q_e->push(g->get_edge_id(w, from));
                             }
                         }
                         else
@@ -332,11 +440,11 @@ public:
                             {
                                 if (w_from)
                                 {
-                                    q_e->push(g->map.get(w, from));
+                                    q_e->push(g->get_edge_id(w, from));
                                 }
                                 else
                                 {
-                                    q_e->push(g->map.get(from, w));
+                                    q_e->push(g->get_edge_id(from, w));
                                 }
                             }
                         }
@@ -347,23 +455,21 @@ public:
                             {
                                 if (val <= lb_2l)
                                 {
-                                    q_e->push(g->map.get(to, w));
-                                    q_e->push(g->map.get(w, to));
+                                    q_e->push(g->get_edge_id(to, w));
+                                    q_e->push(g->get_edge_id(w, to));
                                 }
                             }
                             else
                             {
                                 if (val <= lb_2l1)
                                 {
-                                    q_e->push(g->map.get(w, to));
+                                    q_e->push(g->get_edge_id(w, to));
                                 }
                             }
                         }
                     }
-                    // for (int w : g->neighbor_out(to))
-                    for (ui i = g->h.h[to]; i < g->orig_m; i = g->h.edges[i].ne)
+                    for (int w : g->neighbors_out(to))
                     {
-                        int w = g->initialEdges[i].y;
                         if (v_remove[w] || !g->exist_edge(from, w))
                             continue;
                         if (g->exist_edge(w, to))
@@ -371,41 +477,37 @@ public:
                         int val = common_in_neighbor_cnt->reduce({to, w});
                         if (val <= lb_2l1)
                         {
-                            q_e->push(g->map.get(to, w));
+                            q_e->push(g->get_edge_id(to, w));
                         }
                     }
                 }
             }
-            if (q_v.size()) 
+            if (q_v.size())
             {
                 int u = q_v.front();
                 q_v.pop();
-                // for (int to : g->neighbor_out(u)) 
-                for (ui i = g->h.h[u]; i < g->orig_m; i = g->h.edges[i].ne)
+                for (int to : g->neighbors_out(u))
                 {
-                    int to = g->initialEdges[i].y;
-                    if (g->din[to] - 1 <= lb - paramL && !v_remove[to])
+                    if (g->get_in_degree(to) - 1 <= lb - paramL && !v_remove[to])
                     {
                         q_v.push(to);
                         v_remove[to] = 1;
                     }
                 }
 
-                // for (int from : g->neighbor_in(u))
-                for (ui i = g->reverse_h.h[u]; i < g->orig_m; i = g->reverse_h.edges[i].ne)
+                for (int from : g->neighbors_in(u))
                 {
-                    int from = g->initialEdges[i].x;
-                    if (g->dout[from] - 1 <= lb - paramK && !v_remove[from])
+                    if (g->get_out_degree(from) - 1 <= lb - paramK && !v_remove[from])
                     {
                         q_v.push(from);
                         v_remove[from] = 1;
                     }
                 }
-                for (int v : g->neighbor_out(u))
+                for (int v : g->neighbors_out(u))
                 {
                     if (v_remove[v])
                         continue;
-                    for (int w : g->neighbor_out(u))
+                    for (int w : g->neighbors_out(u))
                     {
                         if (v_remove[w])
                             continue;
@@ -420,28 +522,28 @@ public:
                             {
                                 if (val <= lb_2l)
                                 {
-                                    q_e->push(g->map.get(w, v));
-                                    q_e->push(g->map.get(v, w));
+                                    q_e->push(g->get_edge_id(w, v));
+                                    q_e->push(g->get_edge_id(v, w));
                                 }
                             }
                             else if (wv)
                             {
                                 if (val <= lb_2l1)
-                                    q_e->push(g->map.get(w, v));
+                                    q_e->push(g->get_edge_id(w, v));
                             }
                             else
                             {
                                 if (val <= lb_2l1)
-                                    q_e->push(g->map.get(v, w));
+                                    q_e->push(g->get_edge_id(v, w));
                             }
                         }
                     }
                 }
-                for (int v : g->neighbor_in(u))
+                for (int v : g->neighbors_in(u))
                 {
                     if (v_remove[v])
                         continue;
-                    for (int w : g->neighbor_in(u))
+                    for (int w : g->neighbors_in(u))
                     {
                         if (v_remove[w])
                             continue;
@@ -456,19 +558,19 @@ public:
                             {
                                 if (val <= lb_2k)
                                 {
-                                    q_e->push(g->map.get(w, v));
-                                    q_e->push(g->map.get(v, w));
+                                    q_e->push(g->get_edge_id(w, v));
+                                    q_e->push(g->get_edge_id(v, w));
                                 }
                             }
                             else if (wv)
                             {
                                 if (val <= lb_2k1)
-                                    q_e->push(g->map.get(w, v));
+                                    q_e->push(g->get_edge_id(w, v));
                             }
                             else
                             {
                                 if (val <= lb_2k1)
-                                    q_e->push(g->map.get(v, w));
+                                    q_e->push(g->get_edge_id(v, w));
                             }
                         }
                     }
@@ -477,6 +579,10 @@ public:
             }
         }
         delete q_e;
+        compute_neighbor_cnt();
+        update_state();
+        // cout<<"cur n= "<<g->get_n()<<endl;
+        graph_reduction_time += get_system_time_microsecond() - st_time;
     }
 };
 

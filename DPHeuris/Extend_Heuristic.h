@@ -34,7 +34,7 @@ private:
         dout[a]++;
     }
 
-    int add_first()
+    int add_first(double time_limit_ms=1e9)
     {
         memset(din, 0, n * sizeof(int));
         memset(dout, 0, n * sizeof(int));
@@ -56,6 +56,7 @@ private:
         set<int> temp;
         int ret = min(paramL, paramK);
         int max_cnt = n;
+        double start_time=get_system_time_microsecond();
         for (int i = 0; i < max_cnt; i++)
         {
             temp.clear();
@@ -69,6 +70,8 @@ private:
                     return ret;
                 }
             }
+            if(get_system_time_microsecond()-start_time>=time_limit_ms)
+                break;
         }
         return ret;
     }
@@ -235,7 +238,10 @@ private:
                 }
             }
         }
-
+        if(s.size()>lb)
+        {
+            heur_solution=s;
+        }
         return s.size();
     }
 
@@ -325,6 +331,7 @@ private:
     }
 
 public:
+    set<int> heur_solution;
     Heuristic_add()
     {
         h = ht = ne = nullptr;
@@ -335,7 +342,7 @@ public:
     ~Heuristic_add()
     {
     }
-    int get_lower_bound(ui _n, ui _m, pii *edges, int paramK, int paramL)
+    int get_lower_bound(ui _n, ui _m, pii *edges, int paramK, int paramL, double time_limit_ms=1e9)
     {
         n = _n;
         m = _m << 1; // because we store reverse edges
@@ -371,7 +378,7 @@ public:
         tr.init(n);
         if (cnt == nullptr)
             cnt = new int[n];
-        int ret = add_first();
+        int ret = add_first(time_limit_ms);
         return ret;
     }
 };

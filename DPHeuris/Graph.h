@@ -68,13 +68,14 @@ class Graph
 public:
     ui n, m;
     ui orig_n, orig_m;
-    ui *din, *dout, *pd;       // pseudo-degree
-    AdjacentList h, reverse_h; 
-    MyHashMap map;             // serve for func: exist_edge(a,b)
-    ui *vis;                   // discretization
+    ui *din, *dout, *pd; // pseudo-degree
+    AdjacentList h, reverse_h;
+    MyHashMap map; // serve for func: exist_edge(a,b)
+    ui *vis;       // discretization
     pii *initialEdges;
     bool *v_remove;
-    int *q; // used for weak reduce
+    int *q;                                 // used for weak reduce
+    unordered_map<int, int> map_refresh_id; // we need to re-map the reduced graph to {0,1,...,n-1}, thus requiring to record the map
     Graph()
     {
         vis = din = dout = pd = nullptr;
@@ -131,6 +132,8 @@ public:
         }
         printf("File: %s k= %d l= %d\n", get_file_name_without_suffix(file_path).c_str(), paramK, paramL);
         fscanf(in, "%u%u", &n, &m);
+        for (ui i = 0; i < n; i++)
+            map_refresh_id[i] = i;
         initialEdges = new pii[m];
         for (ui i = 0; i < m; i++)
         {
@@ -158,12 +161,16 @@ public:
             printf("File open failed: %s\n", path.c_str());
             exit(1);
         }
-        fprintf(out, "%u %u\n", n, m);
+        fprintf(out, "%u %u %d\n", n, m, lb);
         for (ui i = 0; i < m; i++)
         {
             pii &h = initialEdges[i];
             fprintf(out, "%u %u\n", h.x, h.y);
         }
+        puts("");
+        // dump the map
+        for (ui i = 0; i < n; i++)
+            fprintf(out, "%d\n", map_refresh_id[i]);
         fclose(out);
         exit(0);
     }
@@ -191,9 +198,13 @@ public:
         for (ui i = 0; i < m; i++)
             vis[initialEdges[i].x] = 1, vis[initialEdges[i].y] = 1;
         n = 0;
+        unordered_map<int, int> pre_map = map_refresh_id;
         for (ui i = 0; i < orig_n; i++)
             if (vis[i])
+            {
+                map_refresh_id[n] = map_refresh_id[i];
                 vis[i] = n++;
+            }
         for (ui i = 0; i < m; i++)
             initialEdges[i] = {vis[initialEdges[i].x], vis[initialEdges[i].y]};
         map.clear(m);
@@ -205,7 +216,7 @@ public:
         orig_n = n;
         orig_m = m;
     }
-    ui getLB_degeneracy_order()
+    ui getLB_degeneracy_order(set<int> *s = nullptr)
     {
         LinearHeap heap(n + max(paramK, paramL), n, pd);
         while (heap.get_min_key() < heap.sz)
@@ -239,13 +250,24 @@ public:
                 h.remove_edge(i);
             }
         }
+        if (s != nullptr)
+        {
+            s->clear();
+            while (heap.sz > 0)
+            {
+                int u = heap.get_min_node();
+                heap.delete_node(u);
+                s->insert(map_refresh_id[u]);
+            }
+            return s->size();
+        }
         return heap.sz;
     }
     vector<ui> get_order()
     {
         LinearHeap heap(n + max(paramK, paramL), n, pd);
         vector<ui> ret;
-        while (heap.sz>0)
+        while (heap.sz > 0)
         {
             ui u = heap.get_min_node();
             ret.push_back(u);
@@ -281,13 +303,13 @@ public:
         reverse(ret.begin(), ret.end());
         return ret;
     }
-    ui getLB_multi_degeneracy()
+    ui getLB_multi_degeneracy(set<int> *s = nullptr)
     {
         do
         {
-            ll st1=get_system_time_microsecond();
-            ui temp_lb = getLB_degeneracy_order();
-            printf("Acquire order: %.4lf s\n",(get_system_time_microsecond()-st1)/1e6);
+            ll st1 = get_system_time_microsecond();
+            ui temp_lb = getLB_degeneracy_order(s);
+            printf("Acquire order: %.4lf s\n", (get_system_time_microsecond() - st1) / 1e6);
             h.clear(m, n);
             reverse_h.clear(m, n);
             initAdjacentList(initialEdges);
@@ -372,10 +394,12 @@ public:
                 continue;
             initialEdges[m++] = h;
         }
+        unordered_map<int, int> pre_map = map_refresh_id;
         for (ui u = 0; u < orig_n; u++)
         {
             if (vis[u])
                 continue;
+            map_refresh_id[n] = pre_map[u];
             vis[u] = n++;
         }
         if (n <= lb)

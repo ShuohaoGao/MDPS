@@ -54,6 +54,12 @@ struct MyHashMap
         for (ui i = 0; i <= mask; i++)
             h[i] = m;
     }
+    void free()
+    {
+        delete[] edges;
+        delete[] h;
+        delete[] rm;
+    }
     void insert(ui key, ui edge_id)
     {
         if (h[key] != m)
@@ -320,86 +326,6 @@ class HashMap_K:public Map
                 a[i].valid=0;
         }
     }h;
-    // struct HMap_List 
-    // {
-    //     ll m;
-    //     ui idx;
-    //     struct node
-    //     {
-    //         ll key;
-    //         int ne;
-    //         int val;
-    //     };
-    //     node *a;
-    //     int *h;
-    //     void init(ll _m)
-    //     {
-    //         m=_m*2;
-	// 		m=m/1000*1000+7;
-    //         h=new int[m];
-    //         memset(h,-1,sizeof(int)*m);
-    //         a=new node[_m];
-    //         idx=0;
-    //     }
-    //     void put(ll key, int val)
-    //     {
-    //         ll k=key%m;
-    //         a[idx]={key,h[k],val};
-    //         h[k]=idx++;
-    //     }
-    //     int get(ll key)
-    //     {
-    //         ll k=key%m;
-    //         for(int i=h[k];~i;i=a[i].ne)
-    //         {
-    //             if(a[i].key==key)
-    //                 return a[i].val;
-    //         }
-    //         return 0;
-    //     }
-    //     bool count(ll key)
-    //     {
-    //         ll k=key%m;
-    //         for(int i=h[k];~i;i=a[i].ne)
-    //         {
-    //             if(a[i].key==key)
-    //                 return 1;
-    //         }
-    //         return 0;
-    //     }
-    //     int increase(ll key)
-    //     {
-    //         ll k=key%m;
-    //         for(int i=h[k];~i;i=a[i].ne)
-    //         {
-    //             if(a[i].key==key)
-    //             {
-    //                 return ++a[i].val;
-    //             }
-    //         }
-    //         a[idx]={key,h[k],1};
-    //         h[k]=idx++;
-    //         return 1;
-    //     }
-    //     int decrease(ll key)
-    //     {
-    //         ll k=key%m;
-    //         for(int i=h[k];~i;i=a[i].ne)
-    //         {
-    //             if(a[i].key==key)
-    //             {
-    //                 return --a[i].val;
-    //             }
-    //         }
-    //         a[idx]={key,h[k],-1};
-    //         h[k]=idx++;
-    //         return -1;
-    //     }
-    //     void clear()
-    //     {
-    //         memset(h,-1,sizeof(int)*m);
-    //     }
-    // }h;
 public:
     HashMap_K(ll v)
 	{
