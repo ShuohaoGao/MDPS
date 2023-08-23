@@ -292,7 +292,7 @@ public:
         if (ub_in + ub_pi0_in <= lb)
             return lb;
         if (ub_in + ub_pi0_in - rm_from_pi0_in > lb)
-            return lb + 1;
+            return ub_in + ub_pi0_in;
         rm_from_pi0_in = 0;
         ub_pi0_in = binaryEstimateUB(set_pi0_in, pi0_sz_in);
         ub_in += ub_pi0_in;
@@ -334,7 +334,7 @@ public:
         if (ub_out + ub_pi0_out <= lb)
             return lb;
         if (ub_out + ub_pi0_out - rm_from_pi0_out > lb)
-            return lb + 1;
+            return ub_out + ub_pi0_out;
         rm_from_pi0_out = 0;
         ub_pi0_out = binaryEstimateUB(set_pi0_out, pi0_sz_out);
         ub_out += ub_pi0_out;
