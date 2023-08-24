@@ -136,9 +136,7 @@ public:
     }
     void strong_reduce(bool first_reduce = false)
     {
-        double st_time = get_system_time_microsecond();
         list_triangles();
-        printf("Time cost of listing triangles: %.4lf s\n", (get_system_time_microsecond() - st_time) / 1e6);
         Queue *q_e = new Queue(g->m + 1); // queue of edges to be removed
         queue<int> q_v;                   // queue of vertices to be removed
         pii *edges = g->initialEdges;

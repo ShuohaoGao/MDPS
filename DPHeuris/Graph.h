@@ -122,7 +122,8 @@ public:
         for (ui i = 0; i < m; i++)
             map.insert_edge(edges[i].x, edges[i].y);
     }
-    void readFromFile(string file_path)
+    // read graph, then conduct degeneracy order & weak reduce
+    void readFromFile(string file_path, double &use_time, set<int> *s = nullptr)
     {
         FILE *in = fopen(file_path.c_str(), "r");
         if (in == nullptr)
@@ -132,26 +133,146 @@ public:
         }
         printf("File: %s k= %d l= %d\n", get_file_name_without_suffix(file_path).c_str(), paramK, paramL);
         fscanf(in, "%u%u", &n, &m);
-        for (ui i = 0; i < n; i++)
-            map_refresh_id[i] = i;
-        initialEdges = new pii[m];
-        for (ui i = 0; i < m; i++)
+        int *din=new int[n];
+        memset(din, 0,sizeof(int)*n);
+        int *dout=new int[n];
+        memset(dout, 0, sizeof(int)*n);
+        vector<vector<int>> in_neighbor(n),out_neighbor(n);
+        for(ui i=0;i<m;i++)
         {
-            fscanf(in, "%u%u", &initialEdges[i].x, &initialEdges[i].y);
+            int a,b;
+            fscanf(in,"%d%d",&a,&b);
+            dout[a]++, din[b]++;
+            out_neighbor[a].push_back(b);
+            in_neighbor[b].push_back(a);
         }
         fclose(in);
         printf("Read ok: n= %u  m= %u \n", n, m);
-        h.init(m, n);
-        reverse_h.init(m, n);
-        initAdjacentList(initialEdges);
-        initDegree(initialEdges);
-        // first LB is degeneracy order, so there is no need to use hash map
-        // map.init(m,n);
-        // initMap(initialEdges);
+        fflush(stdout);
+        double start_time=get_system_time_microsecond();
+        ui *pd=new ui[n];
+        for(ui i=0;i<n;i++)
+            pd[i]=min(din[i]+paramL, dout[i]+paramK);
+        // degeneracy order
+        bool *rm=new bool[n];
+        memset(rm, 0, sizeof(bool)*n);
+        LinearHeap heap(n + max(paramK, paramL), n, pd);
+        while (heap.get_min_key() < heap.sz)
+        {
+            ui u = heap.get_min_node();
+            // delete u
+            heap.delete_node(u);
+            rm[u]=1;
+            for(int v:out_neighbor[u])
+            {
+                if(rm[v]) continue;
+                if(--din[v] + paramL < pd[v])
+                {
+                    pd[v]--;
+                    heap.decrease(pd[v], v);
+                }
+            }
+            for(int v:in_neighbor[u])
+            {
+                if(rm[v]) continue;
+                if(--dout[v] + paramK < pd[v])
+                {
+                    pd[v]--;
+                    heap.decrease(pd[v], v);
+                }
+            }
+        }
+        lb=heap.sz;
+        if (s != nullptr)
+        {
+            s->clear();
+            while (heap.sz > 0)
+            {
+                int u = heap.get_min_node();
+                heap.delete_node(u);
+                assert(s->count(u)==0);
+                s->insert(u);
+            }
+            assert(s->size() == lb);
+        }
+        memset(rm, 0, sizeof(bool)*n);
+        for(int i=0;i<n;i++)
+            din[i]=in_neighbor[i].size();
+        for(int i=0;i<n;i++)
+            dout[i]=out_neighbor[i].size();
+        int hh=0, tt=-1;
+         ui *q=pd;
+        for(int i=0;i<n;i++)
+            if(din[i]+paramL<=lb || dout[i]+paramK<=lb)
+                q[++tt]=i, rm[i]=1;
+        while(hh<=tt)
+        {
+            int u=q[hh++];
+            for(int v:out_neighbor[u])
+            {
+                if(rm[v])   continue;
+                if(--din[v]+paramL<=lb)
+                {
+                    q[++tt]=v;
+                    rm[v]=1;
+                }
+            }
+            for(int v:in_neighbor[u])
+            {
+                if(rm[v]) continue;
+                if(--dout[v]+paramK<=lb)
+                {
+                    q[++tt]=v;
+                    rm[v]=1;
+                }
+            }
+        }
+        int left_n=0;
+        ui *vis=pd;
+        ui max_m=0;
+        for(ui i=0;i<n;i++)
+        {
+            if(!rm[i])
+            {
+                max_m+=out_neighbor[i].size();
+                map_refresh_id[left_n]=i;
+                vis[i]=left_n++;
+            }
+        }
+        initialEdges = new pii[max_m];
+        ui left_m=0;
+        for(ui i=0;i<n;i++)
+        {
+            if(!rm[i])
+            {
+                for(int v:out_neighbor[i])
+                {
+                    if(rm[v]) continue;
+                    initialEdges[left_m++]={vis[i], vis[v]};
+                }
+            }
+        }
+        delete[] pd;
+        delete[] din;
+        delete[] dout;
+        delete[] rm;
+        in_neighbor.clear();
+        in_neighbor.shrink_to_fit();
+        out_neighbor.clear();
+        out_neighbor.shrink_to_fit();
+        n=left_n;
+        m=left_m;
+        if(n>0)
+        {
+            h.init(m, n);
+            reverse_h.init(m, n);
+            initAdjacentList(initialEdges);
+            initDegree(initialEdges);
+        }
         orig_m = m;
         orig_n = n;
-        puts("graph init finished");
-        fflush(stdout);
+        double end_time=get_system_time_microsecond();
+        use_time+=(end_time-start_time)/1e6;
     }
     void dump_to_file(string path)
     {
@@ -250,7 +371,7 @@ public:
                 h.remove_edge(i);
             }
         }
-        if (s != nullptr)
+        if (s != nullptr && heap.sz > lb)
         {
             s->clear();
             while (heap.sz > 0)
@@ -307,15 +428,11 @@ public:
     {
         do
         {
-            ll st1 = get_system_time_microsecond();
             ui temp_lb = getLB_degeneracy_order(s);
-            printf("Acquire order: %.4lf s\n", (get_system_time_microsecond() - st1) / 1e6);
             h.clear(m, n);
             reverse_h.clear(m, n);
             initAdjacentList(initialEdges);
             initDegree(initialEdges);
-            if (lb && temp_lb > lb)
-                cout << "***iteration for degeneracy order worked!***" << endl;
             if (temp_lb <= lb)
                 break;
             else

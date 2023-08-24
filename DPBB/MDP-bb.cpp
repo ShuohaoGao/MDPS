@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
         string ori_file="../../../pre/data/";
         for(ui i=0;i+8<file.size();i++)
             ori_file+=file[i];
-        ori_file += ".txt";
+        ori_file += ".out";
         Verifier s(best_solution, ori_file);
         bool ok=s.is_correct(paramK, paramL);
         if(!ok)
