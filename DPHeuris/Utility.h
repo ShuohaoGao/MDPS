@@ -53,6 +53,23 @@ string get_file_name_without_suffix(string name)
     return ret;
 }
 
+string get_file_name_suffix(string f)
+{
+    string ret = "";
+    bool has_dot = 0;
+    for (char ch : f)
+    {
+        if (ch == '.')
+        {
+            has_dot = 1;
+            ret = "";
+        }
+        else if (has_dot)
+            ret += ch;
+    }
+    return ret;
+}
+
 // faster than std::sort
 void countingSort(vector<pii> &a, int k)
 {

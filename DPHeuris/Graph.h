@@ -125,64 +125,123 @@ public:
     // read graph, then conduct degeneracy order & weak reduce
     void readFromFile(string file_path, double &use_time, set<int> *s = nullptr)
     {
-        FILE *in = fopen(file_path.c_str(), "r");
-        if (in == nullptr)
+        vector<vector<int>> in_neighbor, out_neighbor;
+        int *din, *dout;
+        if (get_file_name_suffix(file_path) == "bin") // binary format file
         {
-            printf("Failed to open %s \n", file_path.c_str());
-            exit(1);
+            FILE *in = fopen(file_path.c_str(), "rb");
+            if (in == nullptr)
+            {
+                printf("Failed to open %s \n", file_path.c_str());
+                exit(1);
+            }
+            ui size_int;
+            fread(&size_int, sizeof(ui), 1, in);
+            if (size_int != sizeof(ui))
+            {
+                printf("sizeof int is different: graph_file(%u), machine(%u)\n", size_int, (int)sizeof(ui));
+                exit(1);
+            }
+            fread(&n, sizeof(ui), 1, in);
+            fread(&m, sizeof(ui), 1, in);
+            cout << "File: " << get_file_name_without_suffix(file_path) << " n= " << n << " m= " << m << endl;
+            ui *d = new ui[n]; // d[u] is the number of u's out-neighbors
+            ui *pstart = new ui[n + 1];
+            ui *edge_to = new ui[m];
+            fread(d, sizeof(ui), n, in);
+            fread(edge_to, sizeof(ui), m, in);
+            pstart[0] = 0;
+            for (ui i = 1; i <= n; i++)
+                pstart[i] = pstart[i - 1] + d[i - 1];
+            in_neighbor = vector<vector<int>>(n);
+            out_neighbor = vector<vector<int>>(n);
+            for (ui u = 0; u < n; u++)
+            {
+                auto &out_neighbors = out_neighbor[u];
+                out_neighbors.resize(d[u]);
+                for (ui i = pstart[u], p = 0; i < pstart[u + 1]; i++, p++)
+                {
+                    ui j = edge_to[i];
+                    out_neighbors[p] = j;
+                    in_neighbor[j].push_back(u);
+                }
+            }
+            dout = new int[n];
+            din = new int[n];
+            for (ui u = 0; u < n; u++)
+            {
+                dout[u] = out_neighbor[u].size();
+                din[u] = in_neighbor[u].size();
+            }
+            delete[] d;
+            delete[] pstart;
+            delete[] edge_to;
         }
-        printf("File: %s k= %d l= %d\n", get_file_name_without_suffix(file_path).c_str(), paramK, paramL);
-        fscanf(in, "%u%u", &n, &m);
-        int *din=new int[n];
-        memset(din, 0,sizeof(int)*n);
-        int *dout=new int[n];
-        memset(dout, 0, sizeof(int)*n);
-        vector<vector<int>> in_neighbor(n),out_neighbor(n);
-        for(ui i=0;i<m;i++)
+        else // default graph file format: n m \n edges
         {
-            int a,b;
-            fscanf(in,"%d%d",&a,&b);
-            dout[a]++, din[b]++;
-            out_neighbor[a].push_back(b);
-            in_neighbor[b].push_back(a);
+            FILE *in = fopen(file_path.c_str(), "r");
+            if (in == nullptr)
+            {
+                printf("Failed to open %s \n", file_path.c_str());
+                exit(1);
+            }
+            printf("File: %s k= %d l= %d\n", get_file_name_without_suffix(file_path).c_str(), paramK, paramL);
+            fscanf(in, "%u%u", &n, &m);
+            din = new int[n];
+            memset(din, 0, sizeof(int) * n);
+            dout = new int[n];
+            memset(dout, 0, sizeof(int) * n);
+            in_neighbor = vector<vector<int>>(n);
+            out_neighbor = vector<vector<int>>(n);
+            for (ui i = 0; i < m; i++)
+            {
+                int a, b;
+                fscanf(in, "%d%d", &a, &b);
+                dout[a]++, din[b]++;
+                out_neighbor[a].push_back(b);
+                in_neighbor[b].push_back(a);
+            }
+            fclose(in);
         }
-        fclose(in);
+
         printf("Read ok: n= %u  m= %u \n", n, m);
         fflush(stdout);
-        double start_time=get_system_time_microsecond();
-        ui *pd=new ui[n];
-        for(ui i=0;i<n;i++)
-            pd[i]=min(din[i]+paramL, dout[i]+paramK);
+        double start_time = get_system_time_microsecond();
+        ui *pd = new ui[n];
+        for (ui i = 0; i < n; i++)
+            pd[i] = min(din[i] + paramL, dout[i] + paramK);
         // degeneracy order
-        bool *rm=new bool[n];
-        memset(rm, 0, sizeof(bool)*n);
+        bool *rm = new bool[n];
+        memset(rm, 0, sizeof(bool) * n);
         LinearHeap heap(n + max(paramK, paramL), n, pd);
         while (heap.get_min_key() < heap.sz)
         {
             ui u = heap.get_min_node();
             // delete u
             heap.delete_node(u);
-            rm[u]=1;
-            for(int v:out_neighbor[u])
+            rm[u] = 1;
+            for (int v : out_neighbor[u])
             {
-                if(rm[v]) continue;
-                if(--din[v] + paramL < pd[v])
+                if (rm[v])
+                    continue;
+                if (--din[v] + paramL < pd[v])
                 {
                     pd[v]--;
                     heap.decrease(pd[v], v);
                 }
             }
-            for(int v:in_neighbor[u])
+            for (int v : in_neighbor[u])
             {
-                if(rm[v]) continue;
-                if(--dout[v] + paramK < pd[v])
+                if (rm[v])
+                    continue;
+                if (--dout[v] + paramK < pd[v])
                 {
                     pd[v]--;
                     heap.decrease(pd[v], v);
                 }
             }
         }
-        lb=heap.sz;
+        lb = heap.sz;
         if (s != nullptr)
         {
             s->clear();
@@ -190,65 +249,68 @@ public:
             {
                 int u = heap.get_min_node();
                 heap.delete_node(u);
-                assert(s->count(u)==0);
+                assert(s->count(u) == 0);
                 s->insert(u);
             }
             assert(s->size() == lb);
         }
-        memset(rm, 0, sizeof(bool)*n);
-        for(int i=0;i<n;i++)
-            din[i]=in_neighbor[i].size();
-        for(int i=0;i<n;i++)
-            dout[i]=out_neighbor[i].size();
-        int hh=0, tt=-1;
-         ui *q=pd;
-        for(int i=0;i<n;i++)
-            if(din[i]+paramL<=lb || dout[i]+paramK<=lb)
-                q[++tt]=i, rm[i]=1;
-        while(hh<=tt)
+        memset(rm, 0, sizeof(bool) * n);
+        for (int i = 0; i < n; i++)
+            din[i] = in_neighbor[i].size();
+        for (int i = 0; i < n; i++)
+            dout[i] = out_neighbor[i].size();
+        int hh = 0, tt = -1;
+        ui *q = pd;
+        for (int i = 0; i < n; i++)
+            if (din[i] + paramL <= lb || dout[i] + paramK <= lb)
+                q[++tt] = i, rm[i] = 1;
+        while (hh <= tt)
         {
-            int u=q[hh++];
-            for(int v:out_neighbor[u])
+            int u = q[hh++];
+            for (int v : out_neighbor[u])
             {
-                if(rm[v])   continue;
-                if(--din[v]+paramL<=lb)
+                if (rm[v])
+                    continue;
+                if (--din[v] + paramL <= lb)
                 {
-                    q[++tt]=v;
-                    rm[v]=1;
+                    q[++tt] = v;
+                    rm[v] = 1;
                 }
             }
-            for(int v:in_neighbor[u])
+            for (int v : in_neighbor[u])
             {
-                if(rm[v]) continue;
-                if(--dout[v]+paramK<=lb)
+                if (rm[v])
+                    continue;
+                if (--dout[v] + paramK <= lb)
                 {
-                    q[++tt]=v;
-                    rm[v]=1;
+                    q[++tt] = v;
+                    rm[v] = 1;
                 }
             }
         }
-        int left_n=0;
-        ui *vis=pd;
-        ui max_m=0;
-        for(ui i=0;i<n;i++)
+        int left_n = 0;
+        ui *vis = pd;
+        ui max_m = 0;
+        for (ui i = 0; i < n; i++)
         {
-            if(!rm[i])
+            if (!rm[i])
             {
-                max_m+=out_neighbor[i].size();
-                map_refresh_id[left_n]=i;
-                vis[i]=left_n++;
+                max_m += out_neighbor[i].size();
+                map_refresh_id[left_n] = i;
+                vis[i] = left_n++;
             }
         }
         initialEdges = new pii[max_m];
-        ui left_m=0;
-        for(ui i=0;i<n;i++)
+        ui left_m = 0;
+        for (ui i = 0; i < n; i++)
         {
-            if(!rm[i])
+            if (!rm[i])
             {
-                for(int v:out_neighbor[i])
+                for (int v : out_neighbor[i])
                 {
-                    if(rm[v]) continue;
-                    initialEdges[left_m++]={vis[i], vis[v]};
+                    if (rm[v])
+                        continue;
+                    initialEdges[left_m++] = {vis[i], vis[v]};
                 }
             }
         }
@@ -260,9 +322,9 @@ public:
         in_neighbor.shrink_to_fit();
         out_neighbor.clear();
         out_neighbor.shrink_to_fit();
-        n=left_n;
-        m=left_m;
-        if(n>0)
+        n = left_n;
+        m = left_m;
+        if (n > 0)
         {
             h.init(m, n);
             reverse_h.init(m, n);
@@ -271,8 +333,8 @@ public:
         }
         orig_m = m;
         orig_n = n;
-        double end_time=get_system_time_microsecond();
-        use_time+=(end_time-start_time)/1e6;
+        double end_time = get_system_time_microsecond();
+        use_time += (end_time - start_time) / 1e6;
     }
     void dump_to_file(string path)
     {
@@ -441,7 +503,7 @@ public:
             if (!n)
                 break;
         } while (1); // each round T(n)=O(n)
-        if (n)       // next, prepare for strong reduce
+        if (n) // next, prepare for strong reduce
         {
             map.init(m, n);
             initMap(initialEdges);
