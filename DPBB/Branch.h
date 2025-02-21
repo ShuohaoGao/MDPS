@@ -177,11 +177,11 @@ public:
         // Bounding Method
         ll start_bounding_time = get_system_time_microsecond();
         int ub = g->get_n();
-        if (vertex_just_removed != -1)
-        {
-            ub = min(ub, upperBound->get_old_upper_bound(vertex_just_removed, v_removed));
-        }
-        else
+        // if (vertex_just_removed != -1)
+        // {
+        //     ub = min(ub, upperBound->get_old_upper_bound(vertex_just_removed, v_removed));
+        // }
+        // else
             ub = min(ub, upperBound->get_upper_bound());
         bounding_time += get_system_time_microsecond() - start_bounding_time;
         if (ub <= lb)
