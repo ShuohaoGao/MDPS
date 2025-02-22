@@ -262,7 +262,7 @@ public:
 
     /**
      * @brief dump the graph to file
-     * 
+     *
      * file format: n m lb \n query vertices set \n edges \n origin_id \n
      */
     void dump_to_file(string output_path, int lb = 0)
@@ -287,7 +287,6 @@ public:
         {
             out << vertices[u].origin_id << endl;
         }
-
         out.close();
     }
 
