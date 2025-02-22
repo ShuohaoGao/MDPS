@@ -138,23 +138,29 @@ public:
             printf("Failed to open %s \n", vertices_path.c_str());
             exit(1);
         }
+        set<ui> temp;
         int sz;
         in >> sz;
         while (sz--)
         {
             int a;
             in >> a;
-            if (a >= n)
-            {
-                printf("Wrong: make sure each query vertex v < n !!\n");
-                exit(1);
-            }
-            query_vertices.push_back(a);
+            temp.insert(a);
         }
-        printf("query vertex set (size=%u):", query_vertices.size());
-        for (ui x : query_vertices)
+        printf("query vertex set (size=%u):", temp.size());
+        for (ui x : temp)
             printf(" %u", x);
         printf("\n");
+        for (ui u = 0; u < n; u++)
+        {
+            if (temp.count(vertices[u].origin_id))
+                query_vertices.push_back(u);
+        }
+        if (query_vertices.size() < temp.size())
+        {
+            printf("MaxDPlex is found during DPHeuris-Q\n");
+            exit(0);
+        }
     }
 
     /**
