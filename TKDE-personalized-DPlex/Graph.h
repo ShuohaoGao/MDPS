@@ -261,6 +261,37 @@ public:
     }
 
     /**
+     * @brief dump the graph to file
+     * 
+     * file format: n m lb \n query vertices set \n edges \n origin_id \n
+     */
+    void dump_to_file(string output_path, int lb = 0)
+    {
+        ofstream out(output_path);
+        if (!out.is_open())
+        {
+            printf("Failed to open %s \n", output_path.c_str());
+            exit(1);
+        }
+        out << n << " " << m << ' ' << lb << endl;
+        for (ui u : query_vertices)
+            out << u << ' ';
+        out << endl;
+        for (ui u = 0; u < n; u++)
+        {
+            auto &vertex = vertices[u];
+            for (ui v : vertex.out_neighbors)
+                out << u << " " << v << '\n';
+        }
+        for (ui u = 0; u < n; u++)
+        {
+            out << vertices[u].origin_id << endl;
+        }
+
+        out.close();
+    }
+
+    /**
      * @brief given a permutation of {0,...,n-1}, resort V
      * @param vertex_id v in new graph corresponds to vertex_id[v] in old graph
      */
