@@ -263,7 +263,7 @@ public:
     /**
      * @brief dump the graph to file
      *
-     * file format: n m lb \n query vertices set \n edges \n origin_id \n
+     * file format: n m lb \n edges \n origin_id \n
      */
     void dump_to_file(string output_path, int lb = 0)
     {
@@ -274,9 +274,6 @@ public:
             exit(1);
         }
         out << n << " " << m << ' ' << lb << endl;
-        for (ui u : query_vertices)
-            out << u << ' ';
-        out << endl;
         for (ui u = 0; u < n; u++)
         {
             auto &vertex = vertices[u];
