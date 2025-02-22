@@ -24,8 +24,14 @@ make
 ```
 
 2. **run**
+- Global MaxDPlex
 ```sh
-./ILP graph_path k l
+./ILP reduced_graph_path k l
+```
+
+- Query MaxDPlex
+```sh
+./ILP reduced_graph_path k l query_vertices_path
 ```
 
 ### executable file

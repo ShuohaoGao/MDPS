@@ -55,6 +55,12 @@ void IntegerLinearProgram(int lb = 0)
         // constrain using lb
         model.add(size_DPlex > lb);
 
+        // query vertices
+        for (ui u : g.query_vertices)
+        {
+            model.add(var_vertices[u] == 1);
+        }
+
         // Final objective: max DPlex size
         model.add(IloMaximize(env, size_DPlex));
         size_DPlex.end();
