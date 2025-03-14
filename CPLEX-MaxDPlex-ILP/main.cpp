@@ -68,6 +68,9 @@ void IntegerLinearProgram(int lb = 0)
         IloCplex cplex(model);
         cplex.setOut(env.getNullStream()); // disable log
 
+        // 添加以下代码以强制使用单线程
+        cplex.setParam(IloCplex::Threads, 1); // 设置线程数为 1
+
         if (!cplex.solve())
         {
             printf("MaxDPlex was found during DPHeuris\n");
@@ -127,7 +130,7 @@ int main(int argc, char *argv[])
     lb = max(lb, (int)ground_truth.size());
 
     printf("lb= %d use-time: %.4lf s, ground-truth:\n", lb, tot_time.get_time_seconds());
-    if(ground_truth.size())
+    if (ground_truth.size())
         print_set(ground_truth);
     fflush(stdout);
 

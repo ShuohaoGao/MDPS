@@ -14,6 +14,9 @@ void IntegerLinearProgram(int lb = 0)
     int n = g.n;
     GRBEnv env;
     env.set(GRB_IntParam_OutputFlag, 0); // 禁用日志输出
+    // 添加以下两行代码以强制使用单线程
+    env.set(GRB_IntParam_Threads, 1);   // 设置线程数为 1
+    env.set(GRB_IntParam_PoolSearchMode, 0); // 禁用并行搜索模式
     try
     {
         GRBModel model(env);
