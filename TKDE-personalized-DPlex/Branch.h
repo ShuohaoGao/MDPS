@@ -264,6 +264,37 @@ public:
     }
 
     /**
+     * @brief partition C to |S|+1 vertex sets: pi_0, pi_1, ..., pi_{|S|}
+     */
+    int partition_in()
+    {
+        vector<int> common_in_neighbors; // pi_0
+        vector<int> pi_i_size(S.size());
+        for (int u : C)
+        {
+            bool flag = 0;
+            for (int i = 0; i < S.size(); i++)
+            {
+                if (!g->exist_edge(u, S[i]))
+                {
+                    pi_i_size[i]++;
+                    flag = 1;
+                    break;
+                }
+            }
+            if (!flag)
+                common_in_neighbors.push_back(u);
+        }
+        int ub = 0;
+        for (int i = 0; i < S.size(); i++)
+            ub += min(pi_i_size[i], l - ((int)S.size() - in_neighbor_in_S[S[i]]));
+        if (ub + S.size() + common_in_neighbors.size() <= lb)
+            return lb; // pruned
+        // invoke binary estimate
+        return ub + binary_ub_add_S(common_in_neighbors);
+    }
+
+    /**
      * @brief compute UB(S,C)
      */
     int upper_bound()
@@ -272,8 +303,78 @@ public:
             return lb;
         if (part_out_ub() <= lb)
             return lb;
-        return partition_out();
+        if (part_in_ub() <= lb)
+            return lb;
+        if (partition_out() <= lb)
+            return lb;
+        if (Chang_ub() <= lb)
+            return lb;
+        return partition_in();
     }
+
+    int Chang_ub()
+    {
+        vector<ui> S_out_unfull;
+        int sup_out = 0;
+        int sz_S_C = S.size() + C.size();
+        for (int u : S)
+        {
+            if (sz_S_C - dout[u] > k)
+            {
+                S_out_unfull.push_back(u);
+                sup_out += k - (S.size() - out_neighbor_in_S[u]);
+            }
+        }
+        vector<pii> sup_and_vertex; // each pair: (S_out_unfull \cap non-Nin[u], u)
+        for (int u : C)
+        {
+            int cnt = S_out_unfull.size() - intersect_count(S_out_unfull, g->vertices[u].in_neighbors);
+            sup_and_vertex.push_back({cnt, u});
+        }
+        sort(sup_and_vertex.begin(), sup_and_vertex.end());
+        int ub = S.size();
+        for (auto h : sup_and_vertex)
+        {
+            int cnt = h.x, u = h.y;
+            if (cnt > sup_out || ub > lb)
+                break;
+            sup_out -= cnt;
+            ub++;
+        }
+        return ub;
+    }
+
+    // int Chang_ub_in()
+    // {
+    //     vector<ui> S_in_unfull;
+    //     int sup_in = 0;
+    //     int sz_S_C = S.size() + C.size();
+    //     for (int u : S)
+    //     {
+    //         if (sz_S_C - din[u] > l)
+    //         {
+    //             S_in_unfull.push_back(u);
+    //             sup_in += l - (S.size() - in_neighbor_in_S[u]);
+    //         }
+    //     }
+    //     vector<pii> sup_and_vertex; // each pair: (S_out_unfull \cap non-Nin[u], u)
+    //     for (int u : C)
+    //     {
+    //         int cnt = S_in_unfull.size() - intersect_count(S_in_unfull, g->vertices[u].out_neighbors);
+    //         sup_and_vertex.push_back({cnt, u});
+    //     }
+    //     sort(sup_and_vertex.begin(), sup_and_vertex.end());
+    //     int ub = S.size();
+    //     for (auto h : sup_and_vertex)
+    //     {
+    //         int cnt = h.x, u = h.y;
+    //         if (cnt > sup_in || ub > lb)
+    //             break;
+    //         sup_in -= cnt;
+    //         ub++;
+    //     }
+    //     return ub;
+    // }
 
     /**
      * @brief ub based on partition: we just random select 2 vertices
@@ -296,6 +397,30 @@ public:
         ub += min(non_neighbor_in_C, k - ((int)S.size() - out_neighbor_in_S[u])); // the vertices in \Pi_u: non-out-neighbors of u
         ub += neighbor_v;                                                         // common-out-neighbors
         ub += min(k - ((int)S.size() - out_neighbor_in_S[v]), non_neighbor_v);    // the vertices in \Pi_v: non-out-neighbors of v
+        return ub;
+    }
+
+    /**
+     * @brief ub based on partition: we just random select 2 vertices
+     */
+    int part_in_ub()
+    {
+        int i = rand() % S.size();
+        int j = i + 1;
+        if (j == S.size())
+            j = 0;
+        int u = S[i], v = S[j];
+        vector<ui> in_neighbors_u; // in-neighbors of u in C
+        for (ui w : g->vertices[u].in_neighbors)
+            if (pos_in_C[w] != -1) // w is in C
+                in_neighbors_u.push_back(w);
+        int non_neighbor_in_C = C.size() - (din[u] - in_neighbor_in_S[u]);             // size of \Pi_u
+        int neighbor_v = intersect_count(in_neighbors_u, g->vertices[v].in_neighbors); // Nin(u) \cap Nin(v)
+        int non_neighbor_v = in_neighbors_u.size() - neighbor_v;                       // size of \Pi_v
+        int ub = S.size();
+        ub += min(non_neighbor_in_C, l - ((int)S.size() - in_neighbor_in_S[u])); // the vertices in \Pi_u: non-in-neighbors of u
+        ub += neighbor_v;                                                        // common-in-neighbors
+        ub += min(l - ((int)S.size() - in_neighbor_in_S[v]), non_neighbor_v);    // the vertices in \Pi_v: non-out-neighbors of v
         return ub;
     }
 
