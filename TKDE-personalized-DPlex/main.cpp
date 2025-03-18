@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     {
         puts("---------------{branch-and-bound stage}----------------");
         fflush(stdout);
-        Branch branch(&g, paramK, paramL, &ground_truth);
+        Branch branch(g, paramK, paramL, &ground_truth);
         branch.run();
         lb = max(paramK + paramL - 2, (int)ground_truth.size());
     }

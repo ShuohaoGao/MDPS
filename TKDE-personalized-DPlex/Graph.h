@@ -2,6 +2,7 @@
 #define GRAPH_H
 
 #include "LinearHeap.h"
+#include "MyBitset.h"
 
 class Vertex
 {
@@ -999,6 +1000,31 @@ public:
                 return false;
         }
         return true;
+    }
+};
+
+class Graph_reduced
+{
+public:
+    int n;
+    AdjacentMatrix Aout, Ain;
+    vector<ui> origin_id;
+    Graph_reduced(Graph &g) : n(g.n), Aout(AdjacentMatrix(g.n)), Ain(AdjacentMatrix(g.n)), origin_id(vector<ui>(g.n))
+    {
+        for (auto &vertex : g.vertices)
+        {
+            ui u = vertex.id;
+            origin_id[u] = vertex.origin_id;
+            for (ui v : vertex.out_neighbors)
+            {
+                Aout.add_edge(u, v);
+                Ain.add_edge(v, u);
+            }
+        }
+    }
+    inline bool exist_edge(int a, int b)
+    {
+        return Aout[a][b];
     }
 };
 

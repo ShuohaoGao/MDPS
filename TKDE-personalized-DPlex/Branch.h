@@ -8,65 +8,26 @@
  */
 class Branch
 {
+    using Set = MyBitset;
+
 public:
-    vector<int> S;
-    vector<bool> in_S;             // u is in S <=> in_S[u]=1
-    vector<int> C, pos_in_C;       // C[i]=u <=> pos_in_C[u] = i
-    vector<int> dout, din;         // degree in G[S+C]
-    vector<int> out_neighbor_in_S; // |Nout(u)\cap S|
-    vector<int> in_neighbor_in_S;  // |Nin(u)\cap S|
-    Graph *g;
+    Graph_reduced g;
+    vector<ui> query_vertices;
     int k, l;
     set<ui> *ground_truth;
     int lb;
+    int v_just_add;
 
     ll dfs_cnt;
     double bnb_time;
+    double kPlexT_time;
 
-    vector<int> int_array1, int_array2; // size=n, default value = 0
-
-    Branch(Graph *_g, int paramK, int paramL, set<ui> *truth) : g(_g), k(paramK), l(paramL), ground_truth(truth),
-                                                                dfs_cnt(0), bnb_time(0)
+    Branch(Graph &_g, int paramK, int paramL, set<ui> *truth) : g(_g), k(paramK), l(paramL), ground_truth(truth),
+                                                                query_vertices(_g.query_vertices),
+                                                                dfs_cnt(0), bnb_time(0), kPlexT_time(0)
     {
         lb = ground_truth->size();
         lb = max(lb, k + l - 2);
-        ui n = g->n;
-        in_S.resize(n);
-        for (ui v : g->query_vertices)
-        {
-            S.push_back(v);
-            in_S[v] = 1;
-        }
-        for (ui i = 0; i < n; i++)
-        {
-            if (in_S[i])
-                continue;
-            C.push_back(i);
-        }
-        pos_in_C.resize(n, -1);
-        for (ui i = 0; i < C.size(); i++)
-        {
-            int u = C[i];
-            pos_in_C[u] = i;
-        }
-        dout.resize(n);
-        din.resize(n);
-        for (ui i = 0; i < n; i++)
-        {
-            dout[i] = g->vertices[i].dout;
-            din[i] = g->vertices[i].din;
-        }
-        out_neighbor_in_S.resize(n);
-        in_neighbor_in_S.resize(n);
-        for (int u : S)
-        {
-            for (ui v : g->vertices[u].out_neighbors)
-                in_neighbor_in_S[v]++;
-            for (ui v : g->vertices[u].in_neighbors)
-                out_neighbor_in_S[v]++;
-        }
-        int_array1.resize(n);
-        int_array2.resize(n);
     }
     ~Branch() {}
 
@@ -76,7 +37,12 @@ public:
     void run()
     {
         Timer t;
-        bnb();
+        Set S(g.n);
+        for (ui u : query_vertices)
+            S.set(u);
+        Set C = S;
+        C.flip();
+        bnb(S, C);
         bnb_time = t.get_time();
 
         print_results();
@@ -86,79 +52,131 @@ public:
      */
     void print_results()
     {
+        print_module_time("kPlexT", kPlexT_time);
         printf("dfs-cnt= %lld use-time: %.4lf s\n", dfs_cnt, bnb_time / 1e6);
     }
+
     /**
      * @brief recursive branch-and-bound procedure: aim to find largest DPlex containing S in G[S+C]
      */
-    void bnb()
+    void bnb(Set &S, Set &C)
     {
         dfs_cnt++;
         if (S.size() > lb)
-            update_lb_S();
+            update_lb_S(S);
 
-        vector<int> vertex_removed; // store the vertices we removed in current branch
-        reduce_C(vertex_removed);
+        reduce_C(S, C);
 
-        int ub = upper_bound();
+        kPlexT_reduce(S, C);
+
+        int ub = upper_bound(S, C);
         if (ub <= lb)
-        {
-            rollback(vertex_removed);
             return;
-        }
-
-        int pivot = select_pivot(); // pivot in C
-        assert(pivot != -1);
-        int pd = min(dout[pivot] + k, din[pivot] + l);
-        int V_sz = S.size() + C.size();
-        if (pd >= V_sz) // check if S+C is DPlex
-        {
-            bool ok = 1;
-            for (int v : S)
-            {
-                int pd_v = min(dout[v] + k, din[v] + l);
-                if (pd_v < V_sz)
-                {
-                    ok = 0;
-                    break;
-                }
-            }
-            if (ok)
-            {
-                update_lb_S_C();
-                rollback(vertex_removed);
-                return;
-            }
-        }
 
         // generate sub-branches
+        int pivot = select_pivot(S, C);
         // branch 1: add pivot to S
-        move_from_C_to_S(pivot);
-        if (S_is_DPlex())
-            bnb();
-        move_from_S_to_C(pivot);
-
+        {
+            auto new_S = S, new_C = C;
+            new_C.reset(pivot);
+            new_S.set(pivot);
+            v_just_add = pivot;
+            bnb(new_S, new_C);
+        }
         // branch 2: remove pivot from C
-        remove_from_C(pivot);
-        bnb();
-        add_to_C(pivot);
+        {
+            C.reset(pivot);
+            auto V = C;
+            V |= S;
+            if (V.size() <= lb)
+                return;
+            if (is_DPlex(V))
+            {
+                update_lb_S(V);
+                return;
+            }
+            v_just_add = -1;
+            bnb(S, C);
+        }
+    }
 
-        // add the removed vertices to C
-        rollback(vertex_removed);
+    // void extend(Set &S, Set &C)
+    // {
+    //     vector<int> vertices;
+    //     for (int u : C)
+    //         vertices.push_back(u);
+    //     // random_shuffle(vertices.begin(), vertices.end());
+    //     auto V = S;
+    //     auto copy_C = C;
+    //     for (int u : S)
+    //     {
+    //         if (S.intersect(g.Aout[u]) + k == S.size())
+    //         {
+    //             copy_C &= g.Aout[u];
+    //         }
+    //         if (S.intersect(g.Ain[u]) + l == S.size())
+    //             copy_C &= g.Ain[u];
+    //     }
+    //     for (int u : vertices)
+    //     {
+    //         if (!copy_C[u])
+    //             continue;
+    //         int out_cnt = V.intersect(g.Aout[u]), in_cnt = V.intersect(g.Ain[u]);
+    //         if (out_cnt + k < V.size() + 1 || in_cnt + l < V.size() + 1)
+    //             continue;
+    //         for (int v : V)
+    //         {
+    //             if (!g.Aout[v][u])
+    //             {
+    //                 if (V.intersect(g.Aout[v]) + k == V.size() + 1)
+    //                 {
+    //                     copy_C &= g.Aout[v];
+    //                 }
+    //             }
+    //             if (!g.Aout[u][v])
+    //             {
+    //                 if (V.intersect(g.Ain[v]) + l == V.size() + 1)
+    //                 {
+    //                     copy_C &= g.Ain[v];
+    //                 }
+    //             }
+    //         }
+    //         V.set(u);
+    //         if (out_cnt + k == V.size())
+    //             copy_C &= g.Aout[u];
+    //         if (in_cnt + l == V.size())
+    //             copy_C &= g.Ain[u];
+    //     }
+    //     if (V.size() > lb)
+    //     {
+    //         update_lb_S(V);
+    //         puts("---------");
+    //     }
+    // }
+
+    bool is_DPlex(Set &S)
+    {
+        for (int v : S)
+        {
+            int pd = min(S.intersect(g.Aout[v]) + k, S.intersect(g.Ain[v]) + l);
+            if (pd < S.size())
+                return 0;
+        }
+        return 1;
     }
 
     /**
      * @brief S+C is DPlex and |S|+|C|>lb
      */
-    void update_lb_S_C()
+    void update_lb_S_C(Set &S, Set &C)
     {
         assert(S.size() + C.size() > lb);
         lb = S.size() + C.size();
         ground_truth->clear();
         for (int v : S)
-            ground_truth->insert(g->vertices[v].origin_id);
+            ground_truth->insert(g.origin_id[v]);
         for (int v : C)
-            ground_truth->insert(g->vertices[v].origin_id);
+            ground_truth->insert(g.origin_id[v]);
         assert(ground_truth->size() == lb);
         printf("Find a larger DPlex (size=%d)\n", lb);
     }
@@ -166,288 +184,31 @@ public:
     /**
      * @brief |S|>lb
      */
-    void update_lb_S()
+    void update_lb_S(Set &S)
     {
         assert(S.size() > lb);
         lb = S.size();
         ground_truth->clear();
         for (int v : S)
-            ground_truth->insert(g->vertices[v].origin_id);
+            ground_truth->insert(g.origin_id[v]);
         assert(ground_truth->size() == lb);
         printf("Find a larger DPlex (size=%d)\n", lb);
-    }
-
-    /**
-     * @brief BinaryEstimate(S+s)
-     */
-    int binary_ub_add_S(vector<int> &s)
-    {
-        s.insert(s.end(), S.begin(), S.end());
-        if (s.size() <= k)
-            return s.size();
-        // compute degree in subgraph G[s]
-        auto &din = int_array1, &dout = int_array2;
-        for (int u : s)
-        {
-            for (int v : s)
-            {
-                if (v == u)
-                    break;
-                if (g->exist_edge(u, v))
-                {
-                    dout[u]++;
-                    din[v]++;
-                }
-                if (g->exist_edge(v, u))
-                {
-                    dout[v]++;
-                    din[u]++;
-                }
-            }
-        }
-        auto &pd = int_array1;
-        for (int u : s)
-            pd[u] = min(dout[u] + k, din[u] + l);
-        vector<int> degrees(s.size());
-        for (int u : s)
-        {
-            degrees.push_back(pd[u]);
-            dout[u] = din[u] = 0; // clear the array
-        }
-        degrees.push_back(-1); // serve for binary search
-        sort(degrees.begin(), degrees.end());
-        // binary search
-        int a = k, b = degrees.size() - 1;
-        while (a < b)
-        {
-            int mid = (a + b + 1) >> 1;
-            int pos = lower_bound(degrees.begin(), degrees.end(), mid) - degrees.end(); // degrees[pos] >= mid
-            // the number of vertices whose pseudo-degrees are not less than mid
-            int cnt = degrees.size() - pos;
-            if (cnt >= mid)
-                a = mid;
-            else
-                b = mid - 1;
-        }
-        return a; // there are a vertices whose pd are at least a
-    }
-
-    /**
-     * @brief partition C to |S|+1 vertex sets: pi_0, pi_1, ..., pi_{|S|}
-     */
-    int partition_out()
-    {
-        vector<int> common_out_neighbors; // pi_0
-        vector<int> pi_i_size(S.size());
-        for (int u : C)
-        {
-            bool flag = 0;
-            for (int i = 0; i < S.size(); i++)
-            {
-                if (!g->exist_edge(S[i], u))
-                {
-                    pi_i_size[i]++;
-                    flag = 1;
-                    break;
-                }
-            }
-            if (!flag)
-                common_out_neighbors.push_back(u);
-        }
-        int ub = 0;
-        for (int i = 0; i < S.size(); i++)
-            ub += min(pi_i_size[i], k - ((int)S.size() - out_neighbor_in_S[S[i]]));
-        if (ub + S.size() + common_out_neighbors.size() <= lb)
-            return lb; // pruned
-        // invoke binary estimate
-        return ub + binary_ub_add_S(common_out_neighbors);
-    }
-
-    /**
-     * @brief partition C to |S|+1 vertex sets: pi_0, pi_1, ..., pi_{|S|}
-     */
-    int partition_in()
-    {
-        vector<int> common_in_neighbors; // pi_0
-        vector<int> pi_i_size(S.size());
-        for (int u : C)
-        {
-            bool flag = 0;
-            for (int i = 0; i < S.size(); i++)
-            {
-                if (!g->exist_edge(u, S[i]))
-                {
-                    pi_i_size[i]++;
-                    flag = 1;
-                    break;
-                }
-            }
-            if (!flag)
-                common_in_neighbors.push_back(u);
-        }
-        int ub = 0;
-        for (int i = 0; i < S.size(); i++)
-            ub += min(pi_i_size[i], l - ((int)S.size() - in_neighbor_in_S[S[i]]));
-        if (ub + S.size() + common_in_neighbors.size() <= lb)
-            return lb; // pruned
-        // invoke binary estimate
-        return ub + binary_ub_add_S(common_in_neighbors);
-    }
-
-    /**
-     * @brief compute UB(S,C)
-     */
-    int upper_bound()
-    {
-        if (degree_ub() <= lb)
-            return lb;
-        if (part_out_ub() <= lb)
-            return lb;
-        if (part_in_ub() <= lb)
-            return lb;
-        if (partition_out() <= lb)
-            return lb;
-        if (Chang_ub() <= lb)
-            return lb;
-        return partition_in();
-    }
-
-    int Chang_ub()
-    {
-        vector<ui> S_out_unfull;
-        int sup_out = 0;
-        int sz_S_C = S.size() + C.size();
-        for (int u : S)
-        {
-            if (sz_S_C - dout[u] > k)
-            {
-                S_out_unfull.push_back(u);
-                sup_out += k - (S.size() - out_neighbor_in_S[u]);
-            }
-        }
-        vector<pii> sup_and_vertex; // each pair: (S_out_unfull \cap non-Nin[u], u)
-        for (int u : C)
-        {
-            int cnt = S_out_unfull.size() - intersect_count(S_out_unfull, g->vertices[u].in_neighbors);
-            sup_and_vertex.push_back({cnt, u});
-        }
-        sort(sup_and_vertex.begin(), sup_and_vertex.end());
-        int ub = S.size();
-        for (auto h : sup_and_vertex)
-        {
-            int cnt = h.x, u = h.y;
-            if (cnt > sup_out || ub > lb)
-                break;
-            sup_out -= cnt;
-            ub++;
-        }
-        return ub;
-    }
-
-    // int Chang_ub_in()
-    // {
-    //     vector<ui> S_in_unfull;
-    //     int sup_in = 0;
-    //     int sz_S_C = S.size() + C.size();
-    //     for (int u : S)
-    //     {
-    //         if (sz_S_C - din[u] > l)
-    //         {
-    //             S_in_unfull.push_back(u);
-    //             sup_in += l - (S.size() - in_neighbor_in_S[u]);
-    //         }
-    //     }
-    //     vector<pii> sup_and_vertex; // each pair: (S_out_unfull \cap non-Nin[u], u)
-    //     for (int u : C)
-    //     {
-    //         int cnt = S_in_unfull.size() - intersect_count(S_in_unfull, g->vertices[u].out_neighbors);
-    //         sup_and_vertex.push_back({cnt, u});
-    //     }
-    //     sort(sup_and_vertex.begin(), sup_and_vertex.end());
-    //     int ub = S.size();
-    //     for (auto h : sup_and_vertex)
-    //     {
-    //         int cnt = h.x, u = h.y;
-    //         if (cnt > sup_in || ub > lb)
-    //             break;
-    //         sup_in -= cnt;
-    //         ub++;
-    //     }
-    //     return ub;
-    // }
-
-    /**
-     * @brief ub based on partition: we just random select 2 vertices
-     */
-    int part_out_ub()
-    {
-        int i = rand() % S.size();
-        int j = i + 1;
-        if (j == S.size())
-            j = 0;
-        int u = S[i], v = S[j];
-        vector<ui> out_neighbors_u; // out-neighbors of u in C
-        for (ui w : g->vertices[u].out_neighbors)
-            if (pos_in_C[w] != -1) // w is in C
-                out_neighbors_u.push_back(w);
-        int non_neighbor_in_C = C.size() - (dout[u] - out_neighbor_in_S[u]);             // size of \Pi_u
-        int neighbor_v = intersect_count(out_neighbors_u, g->vertices[v].out_neighbors); // Nout(u) \cap Nout(v)
-        int non_neighbor_v = out_neighbors_u.size() - neighbor_v;                        // size of \Pi_v
-        int ub = S.size();
-        ub += min(non_neighbor_in_C, k - ((int)S.size() - out_neighbor_in_S[u])); // the vertices in \Pi_u: non-out-neighbors of u
-        ub += neighbor_v;                                                         // common-out-neighbors
-        ub += min(k - ((int)S.size() - out_neighbor_in_S[v]), non_neighbor_v);    // the vertices in \Pi_v: non-out-neighbors of v
-        return ub;
-    }
-
-    /**
-     * @brief ub based on partition: we just random select 2 vertices
-     */
-    int part_in_ub()
-    {
-        int i = rand() % S.size();
-        int j = i + 1;
-        if (j == S.size())
-            j = 0;
-        int u = S[i], v = S[j];
-        vector<ui> in_neighbors_u; // in-neighbors of u in C
-        for (ui w : g->vertices[u].in_neighbors)
-            if (pos_in_C[w] != -1) // w is in C
-                in_neighbors_u.push_back(w);
-        int non_neighbor_in_C = C.size() - (din[u] - in_neighbor_in_S[u]);             // size of \Pi_u
-        int neighbor_v = intersect_count(in_neighbors_u, g->vertices[v].in_neighbors); // Nin(u) \cap Nin(v)
-        int non_neighbor_v = in_neighbors_u.size() - neighbor_v;                       // size of \Pi_v
-        int ub = S.size();
-        ub += min(non_neighbor_in_C, l - ((int)S.size() - in_neighbor_in_S[u])); // the vertices in \Pi_u: non-in-neighbors of u
-        ub += neighbor_v;                                                        // common-in-neighbors
-        ub += min(l - ((int)S.size() - in_neighbor_in_S[v]), non_neighbor_v);    // the vertices in \Pi_v: non-out-neighbors of v
-        return ub;
-    }
-
-    /**
-     * @brief ub = min pd[v], for v in S
-     */
-    int degree_ub()
-    {
-        int ret = S.size() + C.size();
-        for (int v : S)
-        {
-            int pd = min(dout[v] + k, din[v] + l);
-            ret = min(ret, pd);
-        }
-        return ret;
     }
 
     /**
      * @brief select a vertex with minimum pseudo-degree in G[S+C]
      * @return pivot in C
      */
-    int select_pivot()
+    int select_pivot(Set &S, Set &C)
     {
         int sel = -1, min_pd = INF;
+        auto V = C;
+        V |= S;
         for (int u : C)
         {
-            int pd = min(dout[u] + k, din[u] + l);
+            int dout = V.intersect(g.Aout[u]);
+            int din = V.intersect(g.Ain[u]);
+            int pd = min(dout + k, din + l);
             if (pd < min_pd)
             {
                 sel = u;
@@ -458,148 +219,356 @@ public:
     }
 
     /**
-     * @brief for the vertices removed in current branch, we need to rollback before return
+     * @brief reduce u from C if 1) S+u is not a DPlex or 2) pd(u)<=lb
      */
-    void rollback(vector<int> &vertex_removed)
+    void reduce_C(Set &S, Set &C)
     {
-        for (int u : vertex_removed)
-            add_to_C(u);
-    }
-
-    /**
-     * @brief reduce u from C if 1) S+u is not a DPlex or 2) pd(u)<=lb or 3) diameter > 2
-     */
-    void reduce_C(vector<int> &vertex_removed)
-    {
-        for (int i = 0; i < C.size();)
+        auto V = C;
+        V |= S;
+        for (int v : S)
         {
-            int u = C[i];
-            bool removed = 0;
-            if (out_neighbor_in_S[u] + k < S.size() + 1 || in_neighbor_in_S[u] + l < S.size() + 1)
-                removed = 1;
-            if (dout[u] + k <= lb || din[u] + l <= lb)
-                removed = 1;
-            if (removed)
+            if (S.intersect(g.Aout[v]) + k == S.size())
             {
-                remove_from_C(u);
-                vertex_removed.push_back(u);
+                C &= g.Aout[v];
+            }
+            if (S.intersect(g.Ain[v]) + l == S.size())
+            {
+                C &= g.Ain[v];
+            }
+        }
+        for (int u : C)
+        {
+            int dout = V.intersect(g.Aout[u]);
+            int din = V.intersect(g.Ain[u]);
+            int pd = min(dout + k, din + l);
+            if (pd <= lb)
+            {
+                C.reset(u);
                 continue;
             }
-            i++;
-        }
-    }
-
-    /**
-     * @return whether G[S] is a DPlex
-     */
-    bool S_is_DPlex()
-    {
-        for (ui v : S)
-        {
-            int pd = min(out_neighbor_in_S[v] + k, in_neighbor_in_S[v] + l);
-            if (pd < S.size())
-                return false;
-        }
-        return true;
-    }
-
-    /**
-     * @brief move a vertex u from S to C, and update the related array
-     */
-    void move_from_C_to_S(int u)
-    {
-        // for (int u : C)
-        // {
-        //     int pos = pos_in_C[u];
-        //     assert(pos != -1);
-        //     assert(C[pos] == u);
-        // }
-        int pos = pos_in_C[u];
-        assert(!in_S[u] && pos != -1);
-        assert(C[pos] == u);
-        pos_in_C[C.back()] = pos;
-        swap(C[C.size() - 1], C[pos]);
-        C.pop_back();
-        pos_in_C[u] = -1;
-        in_S[u] = 1;
-        S.push_back(u);
-        for (ui v : g->vertices[u].out_neighbors)
-            in_neighbor_in_S[v]++;
-        for (ui v : g->vertices[u].in_neighbors)
-            out_neighbor_in_S[v]++;
-        // for (int u : C)
-        // {
-        //     int pos = pos_in_C[u];
-        //     assert(pos != -1);
-        //     assert(C[pos] == u);
-        // }
-    }
-
-    /**
-     * @brief include a vertex u from C to S, and update the related array
-     */
-    void move_from_S_to_C(int u)
-    {
-        assert(S.back() == u && in_S[u]);
-        S.pop_back();
-        in_S[u] = 0;
-        assert(pos_in_C[u] == -1);
-        pos_in_C[u] = C.size();
-        C.push_back(u);
-        for (ui v : g->vertices[u].out_neighbors)
-            in_neighbor_in_S[v]--;
-        for (ui v : g->vertices[u].in_neighbors)
-            out_neighbor_in_S[v]--;
-    }
-
-    /**
-     * @brief remove a vertex u from C, and update the related degree
-     */
-    void remove_from_C(int u)
-    {
-        int pos = pos_in_C[u];
-        assert(pos != -1);
-        assert(C[pos] == u);
-        pos_in_C[C.back()] = pos;
-        swap(C[C.size() - 1], C[pos]);
-        C.pop_back();
-        for (ui v : g->vertices[u].out_neighbors)
-            din[v]--;
-        for (ui v : g->vertices[u].in_neighbors)
-            dout[v]--;
-        pos_in_C[u] = -1;
-    }
-
-    /**
-     * @brief add a vertex u to C, and update the related degree
-     */
-    void add_to_C(int u)
-    {
-        assert(!in_S[u] && pos_in_C[u] == -1);
-        pos_in_C[u] = C.size();
-        C.push_back(u);
-        dout[u] = din[u] = 0;
-        out_neighbor_in_S[u] = in_neighbor_in_S[u] = 0;
-        for (ui v : g->vertices[u].out_neighbors)
-        {
-            if (in_S[v] || pos_in_C[v] != -1)
+            if (S.intersect(g.Aout[u]) + k <= S.size() || S.intersect(g.Ain[u]) + l <= S.size())
             {
-                dout[u]++;
-                din[v]++;
-                if (in_S[v])
-                    out_neighbor_in_S[u]++;
+                C.reset(u);
+                continue;
             }
         }
-        for (ui v : g->vertices[u].in_neighbors)
+    }
+
+    void kPlexT_reduce(Set &S, Set &C)
+    {
+        if (S.size() <= 1)
+            return;
+        Timer t;
         {
-            if (in_S[v] || pos_in_C[v] != -1)
+            Set Sout(g.n);
+            auto V = S;
+            V |= C;
+            int sup_out = 0;
+            for (int u : S)
             {
-                dout[v]++;
-                din[u]++;
-                if (in_S[v])
-                    in_neighbor_in_S[u]++;
+                if (V.size() - V.intersect(g.Aout[u]) > k)
+                {
+                    Sout.set(u);
+                    sup_out += k - (S.size() - S.intersect(g.Aout[u]));
+                }
+            }
+            vector<pii> cnt_and_vertex;
+            for (int u : C)
+            {
+                int cnt = Sout.size() - Sout.intersect(g.Ain[u]);
+                cnt_and_vertex.push_back({cnt, u});
+            }
+            sort(cnt_and_vertex.begin(), cnt_and_vertex.end());
+            for (int v : C)
+            {
+                int ub_v = S.size() + 1;
+                int non_out_v = S.size() - S.intersect(g.Aout[v]) + 1;
+                int non_in_v = S.size() - S.intersect(g.Ain[v]) + 1;
+                int sup = sup_out - (Sout.size() - Sout.intersect(g.Ain[v]));
+                for (auto &h : cnt_and_vertex)
+                {
+                    int cnt = h.x, w = h.y;
+                    if (ub_v > lb || cnt > sup)
+                        break;
+                    if (w == v || !C[w])
+                        continue;
+                    if (!g.Aout[v][w])
+                    {
+                        if (non_out_v == k)
+                            continue;
+                        if (!g.Ain[v][w])
+                        {
+                            if (non_in_v == l)
+                                continue;
+                            non_in_v++;
+                        }
+                        non_out_v++;
+                    }
+                    else if (!g.Ain[v][w])
+                    {
+                        if (non_in_v == l)
+                            continue;
+                        non_in_v++;
+                    }
+                    sup -= cnt;
+                    ub_v++;
+                }
+                if (ub_v <= lb)
+                    C.reset(v);
             }
         }
+        {
+            Set Sin(g.n);
+            auto V = S;
+            V |= C;
+            int sup_in = 0;
+            for (int u : S)
+            {
+                if (V.size() - V.intersect(g.Ain[u]) > l)
+                {
+                    Sin.set(u);
+                    sup_in += l - (S.size() - S.intersect(g.Ain[u]));
+                }
+            }
+            vector<pii> cnt_and_vertex;
+            for (int u : C)
+            {
+                int cnt = Sin.size() - Sin.intersect(g.Aout[u]);
+                cnt_and_vertex.push_back({cnt, u});
+            }
+            sort(cnt_and_vertex.begin(), cnt_and_vertex.end());
+
+            for (int v : C)
+            {
+                int ub_v = S.size() + 1;
+                int non_out_v = S.size() - S.intersect(g.Aout[v]) + 1;
+                int non_in_v = S.size() - S.intersect(g.Ain[v]) + 1;
+                int sup = sup_in - (Sin.size() - Sin.intersect(g.Aout[v]));
+                for (auto &h : cnt_and_vertex)
+                {
+                    int cnt = h.x, w = h.y;
+                    if (ub_v > lb || cnt > sup)
+                        break;
+                    if (w == v || !C[w])
+                        continue;
+                    if (!g.Aout[v][w])
+                    {
+                        if (non_out_v == k)
+                            continue;
+                        if (!g.Ain[v][w])
+                        {
+                            if (non_in_v == l)
+                                continue;
+                            non_in_v++;
+                        }
+                        non_out_v++;
+                    }
+                    else if (!g.Ain[v][w])
+                    {
+                        if (non_in_v == l)
+                            continue;
+                        non_in_v++;
+                    }
+                    sup -= cnt;
+                    ub_v++;
+                }
+                if (ub_v <= lb)
+                    C.reset(v);
+            }
+        }
+        kPlexT_time += t.get_time();
+    }
+
+    void binary_reduce(Set &V, int min_pd, Set &C)
+    {
+        queue<int> q;
+        Set removed(g.n);
+        for (int u : V)
+        {
+            if (min(V.intersect(g.Aout[u]) + k, V.intersect(g.Ain[u]) + l) < min_pd)
+            {
+                q.push(u);
+                removed.set(u);
+            }
+        }
+        while (q.size())
+        {
+            int u = q.front();
+            q.pop();
+            V.reset(u);
+            if (C[u])
+                C.reset(u);
+            auto out_neighbor = g.Aout[u];
+            out_neighbor &= V;
+            for (int v : out_neighbor)
+            {
+                if (removed[v])
+                    continue;
+                if (V.intersect(g.Ain[v]) + l < min_pd)
+                {
+                    removed.set(v);
+                    q.push(v);
+                }
+            }
+
+            auto in_neighbor = g.Ain[u];
+            in_neighbor &= V;
+            for (int v : in_neighbor)
+            {
+                if (removed[v])
+                    continue;
+                if (V.intersect(g.Aout[v]) + k < min_pd)
+                {
+                    removed.set(v);
+                    q.push(v);
+                }
+            }
+        }
+    }
+
+    int upper_bound(Set &S, Set &C)
+    {
+        if (S.size() + C.size() <= lb)
+            return lb;
+        if (part_out(S, C) <= lb)
+            return lb;
+        return part_in(S, C);
+    }
+
+    int part_out(Set &S, Set &C)
+    {
+        auto copy_S = S, copy_C = C;
+        int ub = 0;
+        while (copy_S.size())
+        {
+            int sel = -1, size = 0, ub_cnt = 0;
+            for (int v : copy_S)
+            {
+                int sz = C.size() - C.intersect(g.Aout[v]);
+                int cnt = k - (S.size() - S.intersect(g.Aout[v]));
+                if (sz <= cnt)
+                {
+                    copy_S.reset(v);
+                }
+                else
+                {
+                    if (sel == -1 || size * cnt < sz * ub_cnt)
+                    {
+                        sel = v;
+                        size = sz;
+                        ub_cnt = cnt;
+                    }
+                }
+            }
+            if (sel == -1)
+                break;
+            copy_S.reset(sel);
+            ub += ub_cnt;
+            copy_C &= g.Aout[sel];
+        }
+        int min_pd = lb + 1 - ub;
+        copy_C |= S;
+        if (min_pd > k)
+        {
+            // binary_reduce(copy_C, min_pd, C);
+            for (int u : C)
+            {
+                if (copy_C[u])
+                {
+                    if (copy_C.intersect(g.Aout[u]) + k < min_pd)
+                    {
+                        copy_C.reset(u);
+                        C.reset(u);
+                    }
+                    else if (copy_C.intersect(g.Ain[u]) + l < min_pd)
+                    {
+                        copy_C.reset(u);
+                        C.reset(u);
+                    }
+                }
+                else
+                {
+                    if (copy_C.intersect(g.Aout[u]) + k < min_pd + 1)
+                    {
+                        C.reset(u);
+                    }
+                    else if (copy_C.intersect(g.Ain[u]) + l < min_pd + 1)
+                    {
+                        C.reset(u);
+                    }
+                }
+            }
+        }
+        ub += copy_C.size();
+        return ub;
+    }
+
+    int part_in(Set &S, Set &C)
+    {
+        auto copy_S = S, copy_C = C;
+        int ub = 0;
+        while (copy_S.size())
+        {
+            int sel = -1, size = 0, ub_cnt = 0;
+            for (int v : copy_S)
+            {
+                int sz = C.size() - C.intersect(g.Ain[v]);
+                int cnt = l - (S.size() - S.intersect(g.Ain[v]));
+                if (sz <= cnt)
+                {
+                    copy_S.reset(v);
+                }
+                else
+                {
+                    if (sel == -1 || size * cnt < sz * ub_cnt)
+                    {
+                        sel = v;
+                        size = sz;
+                        ub_cnt = cnt;
+                    }
+                }
+            }
+            if (sel == -1)
+                break;
+            copy_S.reset(sel);
+            ub += ub_cnt;
+            copy_C &= g.Ain[sel];
+        }
+        int min_pd = lb + 1 - ub;
+        copy_C |= S;
+        if (min_pd > k)
+        {
+            // binary_reduce(copy_C, min_pd, C);
+            for (int u : C)
+            {
+                if (copy_C[u])
+                {
+                    if (copy_C.intersect(g.Aout[u]) + k < min_pd)
+                    {
+                        copy_C.reset(u);
+                        C.reset(u);
+                    }
+                    else if (copy_C.intersect(g.Ain[u]) + l < min_pd)
+                    {
+                        copy_C.reset(u);
+                        C.reset(u);
+                    }
+                }
+                else
+                {
+                    if (copy_C.intersect(g.Aout[u]) + k < min_pd + 1)
+                    {
+                        C.reset(u);
+                    }
+                    else if (copy_C.intersect(g.Ain[u]) + l < min_pd + 1)
+                    {
+                        C.reset(u);
+                    }
+                }
+            }
+        }
+        ub += copy_C.size();
+        return ub;
     }
 };
 
