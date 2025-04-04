@@ -1,7 +1,16 @@
-# Code for Maximum Directed $(k,\ell)$-Plex Searching.
+# Code for Maximum Directed $(k,\ell)$-Plex Searching & Personalized Version.
 
 Written by ***Shuohao Gao*** in **HITSZ**.
 
+## Update for TKDE version
+- [x] `DPBBQ`: Personalized Max DPlex Query. Folder: [`TKDE-personalized-DPlex/`](./TKDE-personalized-DPlex/)
+- [x] `CPLEX`: commercial solver CPLEX for MDPS and PMDPS. Folder: [`CPLEX-MaxDPlex-ILP/`](./CPLEX-MaxDPlex-ILP/)
+- [x] `Gurobi`: commercial solver Gurobi for MDPS and PMDPS. Folder: [`Gurobi-MaxDPlex-ILP/`](./Gurobi-MaxDPlex-ILP/)
+- [x] `DPBB`: we improve it by re-implement using bitset, which runs faster than our ICDE version. Folder: [`bit-DPBB/`](./bit-DPBB/)
+
+
+
+---
 
 # Graph data format:
 first line: 
